@@ -13,7 +13,7 @@ import tarfile
 from rdkit import Chem
 from rdkit.Chem.rdChemReactions import PreprocessReaction
 
-from Reaction import Reaction
+from .Reaction import Reaction
 
 ################## DATA #####################
 
@@ -26,22 +26,26 @@ class RheaDB:
         """
         Initiate Rhea DB by setting the current version
         """
-        
-        self.set_rhea_version()
+        pass
+    
+    def set_rhea_data_location(self, rhea_versions_folder_location):
+        self.RDBv_loc = rhea_versions_folder_location
         
     def set_rhea_version(self):
         """
         Use bioversions to store your rhea version and to not mix it up
+        rhea_versions_folder_location : location at which your rhea data is stored
         :return:
         """
+        
         version = self.get_current_rhea_version()
-        if not os.path.exists('../../rhea-versions'):
-            os.mkdir('../../rhea-versions')
-        rhea_versions = os.listdir('../../rhea-versions')
+        if not os.path.exists(f'{self.RDBv_loc}/rhea-versions'):
+            os.mkdir(f'{self.RDBv_loc}/rhea-versions')
+        rhea_versions = os.listdir(f'{self.RDBv_loc}/rhea-versions')
         if version not in rhea_versions:
             if not os.path.exists(version):
-                os.mkdir(f'../../rhea-versions/{version}')
-                os.mkdir(f'../../rhea-versions/{version}/tsv')
+                os.mkdir(f'{self.RDBv_loc}/rhea-versions/{version}')
+                os.mkdir(f'{self.RDBv_loc}/rhea-versions/{version}/tsv')
         print(f'Your Rhea DB version is {version}')
         self.rhea_db_version = version
 
@@ -60,7 +64,7 @@ class RheaDB:
         """
         self.download_rhea_structure()
         self.generateSmilesChebiReactionEquationFile()
-        self.df_smiles_chebi_equation = pd.read_csv(f'../../rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-chebi.tsv', sep='\t')
+        self.df_smiles_chebi_equation = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-chebi.tsv', sep='\t')
         
         self.download_rhea_files()
         self.add_master_id_to_hierarchy()
@@ -82,13 +86,13 @@ class RheaDB:
         - with ChEBI IDs and .mol structures
         :return:
         """
-        if not os.path.exists(f'../../rhea-versions/{self.rhea_db_version}/rxn'):
+        if not os.path.exists(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/rxn'):
             urllib.request.urlretrieve('https://ftp.expasy.org/databases/rhea/ctfiles/rhea-rxn.tar.gz',
                                        'rhea-rxn.tar.gz')
             # open file
             file = tarfile.open('rhea-rxn.tar.gz')
             # extracting file
-            file.extractall(f'../../rhea-versions/{self.rhea_db_version}')
+            file.extractall(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}')
             
             if os.path.exists('rhea-rxn.tar.gz'):
                 os.remove('rhea-rxn.tar.gz')
@@ -102,7 +106,7 @@ class RheaDB:
         :param columnsnames:
         :return:
         """
-        rhea_tsv_file = f'../../rhea-versions/{self.rhea_db_version}/tsv/{filename}'
+        rhea_tsv_file = f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/{filename}'
         if not os.path.exists(rhea_tsv_file):
             if columnsnames:
                 df = pd.read_csv(f'https://ftp.expasy.org/databases/rhea/tsv/{filename}', sep='\t',
@@ -121,7 +125,7 @@ class RheaDB:
         Returns:
            pd.DataFrame: The loaded data as a pandas DataFrame.
         """
-        if not Path(f'../../rhea-versions/{self.rhea_db_version}/tsv/rhea-relationships-master-id.tsv').exists():
+        if not Path(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-relationships-master-id.tsv').exists():
             self.df_hierarcy_master_id = self.df_hierarchy.copy()
             self.df_hierarcy_master_id[['FROM_REACTION_ID_MASTER_ID', 'DIR_FROM']] =\
                 self.df_hierarcy_master_id.apply(self.findMasterID, axis=1,
@@ -132,24 +136,24 @@ class RheaDB:
             self.df_hierarcy_master_id = self.df_hierarcy_master_id[~self.df_hierarcy_master_id['FROM_REACTION_ID_MASTER_ID'].isna()]
             self.df_hierarcy_master_id = self.df_hierarcy_master_id[~self.df_hierarcy_master_id['TO_REACTION_ID_MASTER_ID'].isna()]
             self.df_hierarcy_master_id = self.df_hierarcy_master_id.astype({'FROM_REACTION_ID_MASTER_ID': 'int32', 'TO_REACTION_ID_MASTER_ID': 'int32'})
-            self.df_hierarcy_master_id.to_csv(f'../../rhea-versions/{self.rhea_db_version}/tsv/rhea-relationships-master-id.tsv', sep='\t', index=False)
+            self.df_hierarcy_master_id.to_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-relationships-master-id.tsv', sep='\t', index=False)
         else:
-            self.df_hierarcy_master_id = pd.read_csv(f'../../rhea-versions/{self.rhea_db_version}/tsv/rhea-relationships-master-id.tsv', sep='\t')
+            self.df_hierarcy_master_id = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-relationships-master-id.tsv', sep='\t')
 
     def add_master_id_to_rxnsmiles(self):
         """
 		Load Rhea reaction smiles
 		:return: pandas df of rxn smiles
 		"""
-        if not Path(f'../../rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-master-id.tsv').exists():
+        if not Path(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-master-id.tsv').exists():
             self.df_smiles_master_id = self.df_smiles_chebi_equation.copy()
             self.df_smiles_master_id[['MASTER_ID', 'DIR']] = self.df_smiles_master_id.apply(self.findMasterID, axis=1, args=['rheaid'],
                                                               result_type='expand')
             self.df_smiles_master_id = self.df_smiles_master_id[~self.df_smiles_master_id['MASTER_ID'].isna()]
             self.df_smiles_master_id.drop_duplicates(subset=['MASTER_ID'], inplace=True)
-            self.df_smiles_master_id.to_csv(f'../../rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-master-id.tsv', sep='\t', index=False)
+            self.df_smiles_master_id.to_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-master-id.tsv', sep='\t', index=False)
         else:
-            self.df_smiles_master_id = pd.read_csv(f'../../rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-master-id.tsv', sep='\t')
+            self.df_smiles_master_id = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-master-id.tsv', sep='\t')
     
     def findMasterID(self, row, id):
         """
@@ -179,20 +183,20 @@ class RheaDB:
         """
         rgen = Reaction() # generic reaction class object to access the processing method
         
-        file_rhea_db = f'../../rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-chebi.tsv'
+        file_rhea_db = f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-chebi.tsv'
         if not os.path.exists(file_rhea_db):
-            rxns = os.listdir(f'../../rhea-versions/{self.rhea_db_version}/rxn')
+            rxns = os.listdir(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/rxn')
             with open(file_rhea_db, 'w') as w:
                 w.write('rheaid\trxnsmiles\tchebi_equation\n')
                 for rxnid in rxns:
                 
-                    with open(f'../../rhea-versions/{self.rhea_db_version}/rxn/{rxnid}') as f:
+                    with open(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/rxn/{rxnid}') as f:
                         chebis = []
                         for line in f:
                             if line.startswith('CHEBI') or line.startswith('POLYMER'):
                                 chebis.append(line.strip())
                 
-                    rxn = rgen.read_rxnfile(f'../../rhea-versions/{self.rhea_db_version}/rxn/{rxnid}')
+                    rxn = rgen.read_rxnfile(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/rxn/{rxnid}')
                     nWarn, nError, nReacts, nProds, reactantLabels = PreprocessReaction(rxn)
                 
                     if not nReacts + nProds == len(chebis):
