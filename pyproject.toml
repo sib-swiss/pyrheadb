@@ -1,6 +1,6 @@
 [project]
 name = "rheadb"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
   { name="Anastasia Sveshnikova", email="anastasia.sveshnikova@sib.swiss" },
 ]
@@ -18,5 +18,5 @@ Homepage = "https://github.com/sib-swiss/rheadb"
 Issues = "https://github.com/sib-swiss/rheadbissues"
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "requests_ftp>=0.3.1", "bioversions>=0.0.0", "rdkit>=2023.9.1"]
 build-backend = "setuptools.build_meta"

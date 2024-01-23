@@ -31,14 +31,15 @@ class RheaDB:
     def set_rhea_data_location(self, rhea_versions_folder_location):
         self.RDBv_loc = rhea_versions_folder_location
         
-    def set_rhea_version(self):
+    def set_rhea_version(self, rheaversion = False):
         """
+        rheaversion : optional, the version of Rhea db to use
         Use bioversions to store your rhea version and to not mix it up
         rhea_versions_folder_location : location at which your rhea data is stored
         :return:
         """
-        
-        version = self.get_current_rhea_version()
+        if not rheaversion:
+            version = self.get_current_rhea_version()
         if not os.path.exists(f'{self.RDBv_loc}/rhea-versions'):
             os.mkdir(f'{self.RDBv_loc}/rhea-versions')
         rhea_versions = os.listdir(f'{self.RDBv_loc}/rhea-versions')
@@ -77,8 +78,8 @@ class RheaDB:
         """
         self.df_hierarchy = self.load_df('rhea-relationships.tsv')
         self.df_directions = self.load_df('rhea-directions.tsv')
-        # self.df_smiles = self.load_df('rhea-reaction-smiles.tsv', columnsnames=['rheaid', 'rxnsmiles'])
-        # self.df_chebi_smiles = self.load_df('rhea-chebi-smiles.tsv', columnsnames=['chebiid', 'smiles'])
+        self.df_smiles = self.load_df('rhea-reaction-smiles.tsv', columnsnames=['rheaid', 'rxnsmiles'])
+        self.df_chebi_smiles = self.load_df('rhea-chebi-smiles.tsv', columnsnames=['chebiid', 'smiles'])
     
     def download_rhea_structure(self):
         """
@@ -174,6 +175,13 @@ class RheaDB:
         # None is for obsolete reactions
         return None
     
+    def setUndefinedCompoundStarFlag(self):
+        """
+        Mark the reactions with compounds that do not have fully defined structures in the dataframe
+        :return:
+        """
+        self.df_smiles_master_id['star'] = self.df_smiles_master_id['rxnsmiles'].apply(lambda x: "*" in x)
+
     def generateSmilesChebiReactionEquationFile(self):
         """
         Download the reactions as .rxn folder from Rhea ftp
@@ -223,3 +231,30 @@ class RheaDB:
                 
                     w.write(f'{rxnid.split(".")[0]}\t{smiles_equation}\t{chebi_equation}\n')
                     
+
+    def loadLongTableReactionParticipats(self):
+        filename_rhea_reaction_smiles_chebi = f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-long-format-smiles-chebi.tsv'
+        if not os.path.exists(filename_rhea_reaction_smiles_chebi):
+            with open(filename_rhea_reaction_smiles_chebi, 'w') as w:
+                w.write('MASTER_ID\treaction_side\tchebiid\tsmiles\n')
+                for index, row in self.df_smiles_master_id.iterrows():
+                    chebi_equation = row['chebi_equation']
+                    rxnsmiles = row['rxnsmiles']
+                    rheaid = row['MASTER_ID']
+                    
+                    reactant_chebis = chebi_equation.split('>>')[0].split('.')
+                    reactant_smiles = rxnsmiles.split('>>')[0].split('.')
+                    assert len(reactant_chebis) == len(reactant_smiles)
+                    for i in range(len(reactant_chebis)):
+                        w.write(f'{rheaid}\t{rheaid}_L\t{reactant_chebis[i]}\t{reactant_smiles[i]}\n')
+
+                    product_chebis = chebi_equation.split('>>')[1].split('.')
+                    product_smiles = rxnsmiles.split('>>')[1].split('.')
+                    assert len(product_chebis) == len(product_smiles)
+                    for i in range(len(product_chebis)):
+                        w.write(f'{rheaid}\t{rheaid}_R\t{product_chebis[i]}\t{product_smiles[i]}\n')
+                        
+        self.rhea_reaction_long_format_smiles_chebi = pd.read_csv(
+            f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-long-format-smiles-chebi.tsv', sep='\t')
+        self.rhea_reaction_long_format_smiles_chebi.drop_duplicates(inplace=True)
+            

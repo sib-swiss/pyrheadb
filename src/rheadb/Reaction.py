@@ -1,6 +1,5 @@
 __author__ = "Anastasia Sveshnikova"
 __email__ = "anastasia.sveshnikova@sib.swiss"
-__version__ = "0.0.1"
 __status__ = "Prototype"
 
 import re
