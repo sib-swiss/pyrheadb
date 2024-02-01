@@ -66,7 +66,7 @@ class RheaDB:
         self.download_rhea_structure()
         self.generateSmilesChebiReactionEquationFile()
         self.df_smiles_chebi_equation = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-chebi.tsv', sep='\t')
-        
+        self.generateReactionCompoundNamesFile()
         self.download_rhea_files()
         self.add_master_id_to_hierarchy()
         self.add_master_id_to_rxnsmiles()
@@ -80,6 +80,7 @@ class RheaDB:
         self.df_directions = self.load_df('rhea-directions.tsv')
         self.df_smiles = self.load_df('rhea-reaction-smiles.tsv', columnsnames=['rheaid', 'rxnsmiles'])
         self.df_chebi_smiles = self.load_df('rhea-chebi-smiles.tsv', columnsnames=['chebiid', 'smiles'])
+        self.chebiId_name = self.load_df('chebiId_name.tsv', columnsnames=['chebiid','cmpname'])
     
     def download_rhea_structure(self):
         """
@@ -231,8 +232,50 @@ class RheaDB:
                 
                     w.write(f'{rxnid.split(".")[0]}\t{smiles_equation}\t{chebi_equation}\n')
                     
-
+    def generateReactionCompoundNamesFile(self):
+        """
+        :return: create self.df_reaction_participants_names - table that stores the reactions as compounds names
+        in format of:
+        reactant_name1 + reactant_name2 = reactant_name3
+        """
+        filename_df_reaction_participants_names = f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-participant-names.tsv'
+        if not os.path.exists(filename_df_reaction_participants_names):
+            df_temp = self.df_smiles_chebi_equation['rheaid','chebi_equation'].copy()
+            df_temp['reaction_participant_names'] = df_temp.apply(self.get_reaction_in_names, axis=1)
+            df_temp.to_csv('', columns = ['rheaid', 'reaction_participant_names'])
+            df_temp = df_temp['rheaid', 'reaction_participant_names']
+            df_temp.to_csv(filename_df_reaction_participants_names, sep='\t', index=False)
+        self.df_reaction_participants_names = pd.read_csv(filename_df_reaction_participants_names, sep='\t')
+    
+    def get_reaction_in_names(self, row):
+        """
+        subfunction of generateReactionCompoundNamesFile(self)
+        :param row: row of self.df_smiles_chebi_equation copy dataframe
+        :return:
+        """
+        chebi_equation = row['chebi_equation']
+        chebi_reactants = chebi_equation.split('>>')[0].split('.')
+        chebi_products =  chebi_equation.split('>>')[1].split('.')
+        chebi_dict = dict(zip(self.chebiId_name['chebiid'].to_list(), self.chebiId_name['cmpname'].to_list()))
+        reactant_names = [chebi_dict[chebiid] for chebiid in chebi_reactants]
+        product_names = [chebi_dict[chebiid] for chebiid in chebi_products]
+        return ' + '.join(reactant_names) + '=' + ' + '.join(product_names)
+        
     def loadLongTableReactionParticipats(self):
+        """
+        This function transforms the wide format of storing reaction-compounds relationship
+        (wide format example: RHEA:10008    CHEBI:29950.CHEBI:29950.CHEBI:35924>>CHEBI:50058.CHEBI:30879.CHEBI:15377)
+        into long format of storing reaction-compounds relationship:
+        RHEA:10008    CHEBI:29950
+        RHEA:10008    CHEBI:35924
+        RHEA:10008    CHEBI:50058
+        RHEA:10008    CHEBI:30879
+        RHEA:10008    CHEBI:15377
+        
+        Uses self.df_smiles_master_id table
+        :return: generates self.rhea_reaction_long_format_smiles_chebi pabdas dataframe
+        and self.rhea_reaction_long_format_smiles_chebi.tsv file
+        """
         filename_rhea_reaction_smiles_chebi = f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-long-format-smiles-chebi.tsv'
         if not os.path.exists(filename_rhea_reaction_smiles_chebi):
             with open(filename_rhea_reaction_smiles_chebi, 'w') as w:

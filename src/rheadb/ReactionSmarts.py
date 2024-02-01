@@ -8,7 +8,7 @@ from PIL import Image
 
 tqdm.pandas()
 
-from AtomMapper import AtomMapper
+from .AtomMapper import AtomMapper
 
 class ReactionSmarts():
 	
