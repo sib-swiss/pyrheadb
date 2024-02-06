@@ -9,6 +9,8 @@ from pathlib import Path
 import os
 import urllib
 import tarfile
+import gzip
+import shutil
 
 from rdkit import Chem
 from rdkit.Chem.rdChemReactions import PreprocessReaction
@@ -66,10 +68,14 @@ class RheaDB:
         self.download_rhea_structure()
         self.generateSmilesChebiReactionEquationFile()
         self.df_smiles_chebi_equation = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-chebi.tsv', sep='\t')
-        self.generateReactionCompoundNamesFile()
+
         self.download_rhea_files()
         self.add_master_id_to_hierarchy()
         self.add_master_id_to_rxnsmiles()
+        self.download_rhea_compound_sdf()
+        self.parseSDF()
+        self.chebiId_name = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/compound_names.tsv', sep='\t')
+        self.generateReactionCompoundNamesFile()
         
     def download_rhea_files(self):
         """
@@ -80,8 +86,7 @@ class RheaDB:
         self.df_directions = self.load_df('rhea-directions.tsv')
         self.df_smiles = self.load_df('rhea-reaction-smiles.tsv', columnsnames=['rheaid', 'rxnsmiles'])
         self.df_chebi_smiles = self.load_df('rhea-chebi-smiles.tsv', columnsnames=['chebiid', 'smiles'])
-        self.chebiId_name = self.load_df('chebiId_name.tsv', columnsnames=['chebiid','cmpname'])
-    
+
     def download_rhea_structure(self):
         """
         Download from Rhea FTP files that store the rhea reactions as .rxn files
@@ -99,7 +104,27 @@ class RheaDB:
             if os.path.exists('rhea-rxn.tar.gz'):
                 os.remove('rhea-rxn.tar.gz')
         else:
-            print('Using previously downloaded Rhea version')
+            print('Using previously downloaded Rhea .rxn file version')
+
+    def download_rhea_compound_sdf(self):
+        """
+        Download from Rhea FTP files that store the rhea reactions as .rxn files
+        - with ChEBI IDs and .mol structures
+        :return:
+        """
+        if not os.path.exists(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/sdf'):
+            os.mkdir(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/sdf')
+            urllib.request.urlretrieve('https://ftp.expasy.org/databases/rhea/ctfiles/rhea.sdf.gz',
+                                       'rhea.sdf.gz')
+            # open file
+            with gzip.open('rhea.sdf.gz', 'rb') as file_in:
+                with open(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/sdf/rhea.sdf', 'wb') as file_out:
+                    shutil.copyfileobj(file_in, file_out)
+        
+            if os.path.exists('rhea.sdf.gz'):
+                os.remove('rhea.sdf.gz')
+        else:
+            print('Using previously downloaded Rhea compounds .sdf version')
             
     def load_df(self, filename, columnsnames=[]):
         """
@@ -240,14 +265,13 @@ class RheaDB:
         """
         filename_df_reaction_participants_names = f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-participant-names.tsv'
         if not os.path.exists(filename_df_reaction_participants_names):
-            df_temp = self.df_smiles_chebi_equation['rheaid','chebi_equation'].copy()
-            df_temp['reaction_participant_names'] = df_temp.apply(self.get_reaction_in_names, axis=1)
-            df_temp.to_csv('', columns = ['rheaid', 'reaction_participant_names'])
-            df_temp = df_temp['rheaid', 'reaction_participant_names']
-            df_temp.to_csv(filename_df_reaction_participants_names, sep='\t', index=False)
+            df_temp = self.df_smiles_master_id[['rheaid','chebi_equation']].copy()
+            chebi_dict = dict(zip(self.chebiId_name['chebiid'].to_list(), self.chebiId_name['cmpname'].to_list()))
+            df_temp['reaction_participant_names'] = df_temp.apply(self.get_reaction_in_names, axis=1, args = [chebi_dict,])
+            df_temp.to_csv(filename_df_reaction_participants_names, sep='\t', index=False, columns=['rheaid', 'reaction_participant_names'])
         self.df_reaction_participants_names = pd.read_csv(filename_df_reaction_participants_names, sep='\t')
     
-    def get_reaction_in_names(self, row):
+    def get_reaction_in_names(self, row, chebi_dict):
         """
         subfunction of generateReactionCompoundNamesFile(self)
         :param row: row of self.df_smiles_chebi_equation copy dataframe
@@ -256,7 +280,13 @@ class RheaDB:
         chebi_equation = row['chebi_equation']
         chebi_reactants = chebi_equation.split('>>')[0].split('.')
         chebi_products =  chebi_equation.split('>>')[1].split('.')
-        chebi_dict = dict(zip(self.chebiId_name['chebiid'].to_list(), self.chebiId_name['cmpname'].to_list()))
+        
+        # Test I was running to check that no reactant names were lost
+        # extra_reactants = set(chebi_reactants).union(set(chebi_products))-set(chebi_dict.keys())
+        # if len(extra_reactants)>0:
+        #     print('Extra', extra_reactants)
+        #     return None
+        
         reactant_names = [chebi_dict[chebiid] for chebiid in chebi_reactants]
         product_names = [chebi_dict[chebiid] for chebiid in chebi_products]
         return ' + '.join(reactant_names) + '=' + ' + '.join(product_names)
@@ -300,4 +330,31 @@ class RheaDB:
         self.rhea_reaction_long_format_smiles_chebi = pd.read_csv(
             f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-long-format-smiles-chebi.tsv', sep='\t')
         self.rhea_reaction_long_format_smiles_chebi.drop_duplicates(inplace=True)
-            
+
+    def parseSDF(self):
+        """
+        Parse the downloaded .sdf file that contains the structures and names for all compounds
+        Extract only names per id as this ids are used in the .rxn files and not all chebiids are
+        present in .tsv on the website
+        :return:
+        """
+        compound_id_name_dict = dict()
+        new_compound = True
+        name_attention = False
+        with open(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/sdf/rhea.sdf') as f:
+            for line in f:
+                if new_compound == True:
+                    compound_id = line.strip()
+                    new_compound = False
+                if line.startswith('$$$$'):
+                    new_compound = True
+                if name_attention == True:
+                    compound_id_name_dict[compound_id] = line.strip()
+                    name_attention = False
+                if line.startswith('> <Rhea_ascii_name>'):
+                    name_attention = True
+        with open(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/compound_names.tsv', 'w') as w:
+            w.write('chebiid\tcmpname\n')
+            for compound_id, compound_name in compound_id_name_dict.items():
+                w.write(f'{compound_id}\t{compound_name}\n')
+
