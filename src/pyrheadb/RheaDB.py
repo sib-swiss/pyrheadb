@@ -3,10 +3,9 @@ __email__ = "anastasia.sveshnikova@sib.swiss"
 __status__ = "Prototype"
 
 import pandas as pd
-import bioversions
 from pathlib import Path
 import os
-import urllib
+import urllib.request as request
 import tarfile
 import gzip
 import shutil
@@ -41,13 +40,12 @@ class RheaDB:
         """
         if not rheaversion:
             version = self.get_current_rhea_version()
+        else:
+            version = rheaversion
+            
         if not os.path.exists(f'{self.RDBv_loc}/rhea-versions'):
             os.mkdir(f'{self.RDBv_loc}/rhea-versions')
-        rhea_versions = os.listdir(f'{self.RDBv_loc}/rhea-versions')
-        if version not in rhea_versions:
-            if not os.path.exists(version):
-                os.mkdir(f'{self.RDBv_loc}/rhea-versions/{version}')
-                os.mkdir(f'{self.RDBv_loc}/rhea-versions/{version}/tsv')
+
         print(f'Your Rhea DB version is {version}')
         self.rhea_db_version = version
 
@@ -56,7 +54,10 @@ class RheaDB:
         Get current version of the Rhea DB
         :return:
         """
-        version = bioversions.get_version("rhea")
+        request.urlretrieve('https://ftp.expasy.org/databases/rhea/rhea-release.properties',
+                                   'rhea-release.properties')
+        with open('rhea-release.properties') as f:
+            version = int(f.readline().split('=')[1])
         return version
 
     def loadRhea(self):
@@ -64,47 +65,60 @@ class RheaDB:
         Load Rhea DB - download files and generate tsv from .rxn
         :return:
         """
-        self.download_rhea_structure()
+        self.extract_rhea_structure()
         self.generateSmilesChebiReactionEquationFile()
         self.df_smiles_chebi_equation = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-chebi.tsv', sep='\t')
-        self.download_rhea_files()
+        self.load_rhea_files()
         self.add_master_id_to_hierarchy()
         self.add_master_id_to_rxnsmiles()
-        self.download_rhea_compound_sdf()
+        self.extract_rhea_compound_sdf()
         self.parseSDF()
         self.chebiId_name = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/compound_names.tsv', sep='\t')
         self.generateReactionCompoundNamesFile()
-        
-    def download_rhea_files(self):
+    
+    def downloadRheaVersionFull(self):
+
         """
-        Download all the relevant Rhea table from the FTP
+        Download all Rhea version from expasy FTP
         :return:
         """
+        if not os.path.exists(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}'):
+            request.urlretrieve(f'https://ftp.expasy.org/databases/rhea/old_releases/{self.rhea_db_version}.tar.bz2',
+                                       f'{self.rhea_db_version}.tar.bz2')
+            # open file
+            file = tarfile.open(f'{self.rhea_db_version}.tar.bz2','r:bz2')
+            # extracting file
+            file.extractall(f'{self.RDBv_loc}/rhea-versions')
+        
+            if os.path.exists(f'{self.rhea_db_version}.tar.bz2'):
+                os.remove(f'{self.rhea_db_version}.tar.bz2')
+        else:
+            print('Using previously downloaded Rhea version')
+        
+    def load_rhea_files(self):
+        """
+        Load all the relevant Rhea tables from the downloaded FTP folder
+        :return:
+        """
+        
         self.df_hierarchy = self.load_df('rhea-relationships.tsv')
         self.df_directions = self.load_df('rhea-directions.tsv')
         self.df_smiles = self.load_df('rhea-reaction-smiles.tsv', columnsnames=['rheaid', 'rxnsmiles'])
         self.df_chebi_smiles = self.load_df('rhea-chebi-smiles.tsv', columnsnames=['chebiid', 'smiles'])
 
-    def download_rhea_structure(self):
+    def extract_rhea_structure(self):
         """
         Download from Rhea FTP files that store the rhea reactions as .rxn files
         - with ChEBI IDs and .mol structures
         :return:
         """
         if not os.path.exists(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/rxn'):
-            urllib.request.urlretrieve('https://ftp.expasy.org/databases/rhea/ctfiles/rhea-rxn.tar.gz',
-                                       'rhea-rxn.tar.gz')
             # open file
-            file = tarfile.open('rhea-rxn.tar.gz')
+            file = tarfile.open(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/ctfiles/rhea-rxn.tar.gz')
             # extracting file
             file.extractall(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}')
-            
-            if os.path.exists('rhea-rxn.tar.gz'):
-                os.remove('rhea-rxn.tar.gz')
-        else:
-            print('Using previously downloaded Rhea .rxn file version')
 
-    def download_rhea_compound_sdf(self):
+    def extract_rhea_compound_sdf(self):
         """
         Download from Rhea FTP files that store the rhea reactions as .rxn files
         - with ChEBI IDs and .mol structures
@@ -112,17 +126,11 @@ class RheaDB:
         """
         if not os.path.exists(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/sdf'):
             os.mkdir(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/sdf')
-            urllib.request.urlretrieve('https://ftp.expasy.org/databases/rhea/ctfiles/rhea.sdf.gz',
-                                       'rhea.sdf.gz')
             # open file
-            with gzip.open('rhea.sdf.gz', 'rb') as file_in:
+            with gzip.open(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/ctfiles/rhea.sdf.gz', 'rb') as file_in:
                 with open(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/sdf/rhea.sdf', 'wb') as file_out:
                     shutil.copyfileobj(file_in, file_out)
-        
-            if os.path.exists('rhea.sdf.gz'):
-                os.remove('rhea.sdf.gz')
-        else:
-            print('Using previously downloaded Rhea compounds .sdf version')
+
             
     def load_df(self, filename, columnsnames=[]):
         """
@@ -132,16 +140,12 @@ class RheaDB:
         :return:
         """
         rhea_tsv_file = f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/{filename}'
-        if not os.path.exists(rhea_tsv_file):
-            if columnsnames:
-                df = pd.read_csv(f'https://ftp.expasy.org/databases/rhea/tsv/{filename}', sep='\t',
-                                   names=columnsnames)
-            else:
-                df = pd.read_csv(f'https://ftp.expasy.org/databases/rhea/tsv/{filename}', sep='\t')
-            df.to_csv(rhea_tsv_file, index=False, sep='\t')
-            return df
+        if columnsnames:
+            df = pd.read_csv(rhea_tsv_file, sep='\t',
+                               names=columnsnames)
         else:
-            return pd.read_csv(rhea_tsv_file, sep='\t')
+            df = pd.read_csv(rhea_tsv_file, sep='\t')
+        return df
             
     def add_master_id_to_hierarchy(self):
         """
@@ -213,10 +217,11 @@ class RheaDB:
         Returns:
         Generates the .tsv with smiles and ChEBI equation in .tsv folder
         """
-        rgen = Reaction() # generic reaction class object to access the processing method
-        
+       
         file_rhea_db = f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-chebi.tsv'
         if not os.path.exists(file_rhea_db):
+            rgen = Reaction()  # generic reaction class object to access the processing method
+    
             rxns = os.listdir(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/rxn')
             with open(file_rhea_db, 'w') as w:
                 w.write('rheaid\trxnsmiles\tchebi_equation\n')
@@ -280,10 +285,10 @@ class RheaDB:
         chebi_products =  chebi_equation.split('>>')[1].split('.')
         
         # Test I was running to check that no reactant names were lost
-        # extra_reactants = set(chebi_reactants).union(set(chebi_products))-set(chebi_dict.keys())
-        # if len(extra_reactants)>0:
-        #     print('Extra', extra_reactants)
-        #     return None
+        extra_reactants = set(chebi_reactants).union(set(chebi_products))-set(chebi_dict.keys())
+        if len(extra_reactants)>0:
+            for reactant in extra_reactants:
+                chebi_dict[reactant]='noname'
         
         reactant_names = [chebi_dict[chebiid] for chebiid in chebi_reactants]
         product_names = [chebi_dict[chebiid] for chebiid in chebi_products]
