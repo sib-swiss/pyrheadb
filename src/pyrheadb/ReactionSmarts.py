@@ -1,3 +1,5 @@
+import os.path
+
 from rdkit import Chem
 from rdkit.Chem import rdChemReactions
 from rdkit.Chem.Draw import rdMolDraw2D
@@ -9,8 +11,9 @@ from PIL import Image
 tqdm.pandas()
 
 from .AtomMapper import AtomMapper
+from .RheaDB import RheaDB
 
-class ReactionSmarts():
+class ReactionSmarts(RheaDB):
 	
 	def __init__(self):
 		"""
@@ -25,7 +28,9 @@ class ReactionSmarts():
 		:param df: pandas df with MASTER_ID (rhea id no direction) and rxn (reaction smiles) columns
 		:return:
 		"""
-		rheaSmartsFile = 'data/rheaSmarts.json'
+		if not os.path.exists(self.RDBv_loc+'/smarts'):
+			os.mkdir(self.RDBv_loc+'/smarts')
+		rheaSmartsFile = self.RDBv_loc+'/smarts/rheaSmarts.json'
 		self.rxn_mapper = AtomMapper()
 		
 		print('Converting reaction SMILES into SMARTS')
@@ -80,7 +85,6 @@ class ReactionSmarts():
 	
 	def drawReactionSmarts(self, rxn_smarts, rxn_name, bw=False):
 		"""
-		
 		:param rxn_smarts: SMARTS of the reaction
 		:param rxn_name: name of the reaction (e.g. Rhea ID)
 		:param bw: black and white, True / False

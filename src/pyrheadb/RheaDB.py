@@ -1,6 +1,5 @@
 __author__ = "Anastasia Sveshnikova"
 __email__ = "anastasia.sveshnikova@sib.swiss"
-__version__ = "0.0.1"
 __status__ = "Prototype"
 
 import pandas as pd
@@ -68,7 +67,6 @@ class RheaDB:
         self.download_rhea_structure()
         self.generateSmilesChebiReactionEquationFile()
         self.df_smiles_chebi_equation = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-chebi.tsv', sep='\t')
-
         self.download_rhea_files()
         self.add_master_id_to_hierarchy()
         self.add_master_id_to_rxnsmiles()
@@ -181,7 +179,7 @@ class RheaDB:
             self.df_smiles_master_id.to_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-master-id.tsv', sep='\t', index=False)
         else:
             self.df_smiles_master_id = pd.read_csv(f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-smiles-master-id.tsv', sep='\t')
-    
+            
     def findMasterID(self, row, id):
         """
         Assign the rhea Master ID (undirectional) to avoid LR - RL duplication
@@ -265,10 +263,10 @@ class RheaDB:
         """
         filename_df_reaction_participants_names = f'{self.RDBv_loc}/rhea-versions/{self.rhea_db_version}/tsv/rhea-reaction-participant-names.tsv'
         if not os.path.exists(filename_df_reaction_participants_names):
-            df_temp = self.df_smiles_master_id[['rheaid','chebi_equation']].copy()
+            df_temp = self.df_smiles_master_id[['rheaid','chebi_equation', 'MASTER_ID']].copy()
             chebi_dict = dict(zip(self.chebiId_name['chebiid'].to_list(), self.chebiId_name['cmpname'].to_list()))
             df_temp['reaction_participant_names'] = df_temp.apply(self.get_reaction_in_names, axis=1, args = [chebi_dict,])
-            df_temp.to_csv(filename_df_reaction_participants_names, sep='\t', index=False, columns=['rheaid', 'reaction_participant_names'])
+            df_temp.to_csv(filename_df_reaction_participants_names, sep='\t', index=False, columns=['rheaid', 'MASTER_ID', 'reaction_participant_names'])
         self.df_reaction_participants_names = pd.read_csv(filename_df_reaction_participants_names, sep='\t')
     
     def get_reaction_in_names(self, row, chebi_dict):
@@ -289,7 +287,7 @@ class RheaDB:
         
         reactant_names = [chebi_dict[chebiid] for chebiid in chebi_reactants]
         product_names = [chebi_dict[chebiid] for chebiid in chebi_products]
-        return ' + '.join(reactant_names) + '=' + ' + '.join(product_names)
+        return ' + '.join(reactant_names) + ' = ' + ' + '.join(product_names)
         
     def loadLongTableReactionParticipats(self):
         """
