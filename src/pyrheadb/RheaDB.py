@@ -427,7 +427,7 @@ class RheaDB:
         print("self.rhea_reaction_long_format_smiles_chebi")
         print(self.rhea_reaction_long_format_smiles_chebi.columns)
         
-    def git(self):
+    def print_all_dataframe_shapes(self):
         """
         Function for summary of the RheaDB:
         prints all the dataframes of the class and their columns
