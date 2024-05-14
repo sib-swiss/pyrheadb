@@ -113,6 +113,7 @@ class RInChI():
 		# Get rid of trailing line, if any.
 		if lines[len(lines) - 1] == "":
 			lines = lines[:len(lines) - 1]
+			
 		# Sanity check: Must contain an even number of lines (direction line + No-Structure count line + n * InChI+AuxInfo line pairs).
 		if len(lines) % 2 != 0:
 			raise Exception("Invalid number of lines (" + str(

@@ -1,3 +1,22 @@
+# setup.py used in local production, for the package pyproject.toml is used
+setup.py
+
+# Downloaded file of rhea version
+rhea-release.properties
+
+# in .gitignore for now
+Pipfile
+analytics/*
+docs/*
+# going to remove from git ignore once the pairs analysis work is done
+src/pyrheadb/CompoundPairs.py
+# going to remove from git ignore once the logic developed for gangliosides is generalised
+src/pyrheadb/gangliosides/*
+# going to remove from git ignore once the test files of rheadb are shortened, not the whole v130 of rheadb, only one example
+tests/test_rhea_db.py
+tests/test_rhea_db/
+
+
 #output folders
 rhea-versions/*
 examples/rheadata/*

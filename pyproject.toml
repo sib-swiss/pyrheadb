@@ -1,6 +1,6 @@
 [project]
-name = "rheadb"
-version = "0.0.4"
+name = "pyrheadb"
+version = "0.0.11"
 authors = [
   { name="Anastasia Sveshnikova", email="anastasia.sveshnikova@sib.swiss" },
 ]
@@ -12,11 +12,24 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = ["setuptools", "pandas", "rdkit", "requests_ftp", "networkx", "tqdm", "matplotlib",
+    "pathlib", "rxnmapper", "pillow"]
 
 [project.urls]
-Homepage = "https://github.com/sib-swiss/rheadb"
-Issues = "https://github.com/sib-swiss/rheadbissues"
+Homepage = "https://github.com/sib-swiss/pyrheadb"
+Issues = "https://github.com/sib-swiss/pyrheadb/issues"
+
 
 [build-system]
-requires = ["setuptools>=61.0", "requests_ftp>=0.3.1", "bioversions>=0.0.0", "rdkit>=2023.9.1"]
+requires = [
+    "setuptools>=61.0",
+    "requests_ftp>=0.3.1",
+    "rxnmapper>=0.3.0",
+    "rdkit>=2023.9.1",
+    "pandas>=2.0.0",
+    "networkx>=3.0",
+    "tqdm>=4.0.0",
+    "matplotlib>=3.6.0",
+    "pathlib>=1.0.1",
+    "pillow>=10.0.0"]
 build-backend = "setuptools.build_meta"

@@ -6,6 +6,7 @@ See [Wiki](https://github.com/sib-swiss/pyrheadb/wiki) for detailed description.
 # Folder description
 ## bin
 Executables
+
 |___rinchi_lib
     RInChI binary downloaded from https://www.inchi-trust.org/downloads/
 
