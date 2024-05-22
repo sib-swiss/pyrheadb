@@ -1,4 +1,4 @@
-![logo](./pyrheadb_logo.png)
+![logo](./readme_img/pyrheadb_logo.png)
 Repository for the Python package intended to facilitate access to Rhea data from Python.
 
 Installation and usage
