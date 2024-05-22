@@ -41,16 +41,35 @@ class RheaDB:
         :return:
         """
         if not rhea_version:
-            version = self.__get_current_rhea_version()
+            version = self.__handle_ulr_error()
         else:
             version = rhea_version
-            
+        
+        if not version:
+            print('Impossible to access any Rhea version.')
+            print('Connect to internet and try again.')
+            exit()
         os.makedirs(os.path.join(f'{self.rhea_versions_folder_location}','rhea-versions'), exist_ok=True)
 
         print(f'Your Rhea DB version is {version}')
         self.rhea_db_version = version
         self.rhea_db_version_location = os.path.join(f'{self.rhea_versions_folder_location}','rhea-versions', f'{version}')
 
+    def __handle_ulr_error(self):
+        try:
+            return self.__get_current_rhea_version()
+        except Exception as e:
+            print(e)
+            print('It appears you are not connected to internet and we cannot download the database.')
+            print('We will check what is the latest version on your computer.')
+            versions = os.listdir(os.path.join(f'{self.rhea_versions_folder_location}','rhea-versions'))
+            versions = [int(i) for i in versions if all([c.isdigit() for c in i])]
+            if versions:
+                return (max(versions))
+            
+            
+            
+        
     def __get_current_rhea_version(self):
         """
         Get current version of the Rhea DB
@@ -60,6 +79,7 @@ class RheaDB:
                                    'rhea-release.properties')
         with open('rhea-release.properties') as f:
             version = int(f.readline().split('=')[1].strip())
+        Path('rhea-release.properties').unlink(missing_ok=True)
         return version
 
     def __load_rhea(self):

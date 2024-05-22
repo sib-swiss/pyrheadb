@@ -7,6 +7,8 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit import RDLogger
 
+from collections import Counter
+
 RDLogger.DisableLog('rdApp.*')
 
 class Reaction:
@@ -41,6 +43,16 @@ class Reaction:
 				w.write(content)
 			return self.read_rxnfile(rxnfile)
 		return rxn
+	
+	def stoichiometric_equation(self, identifiers_equation):
+		reactants = identifiers_equation.split('>>')[0].split('.')
+		products = identifiers_equation.split('>>')[1].split('.')
+		
+		reactants = Counter(reactants)
+		products = Counter(products)
+		reactants = [str(reactants[cid]) + ' ' + cid for cid in reactants]
+		products = [str(products[cid]) + ' ' + cid for cid in products]
+		return ' + '.join(reactants) + ' <=> ' + ' + '.join(products)
 	
 	def check_reaction_balance(self, reaction_string, format='smiles'):
 		"""

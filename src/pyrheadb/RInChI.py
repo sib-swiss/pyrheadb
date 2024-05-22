@@ -192,3 +192,11 @@ class RInChI():
 		rinchi = rinchi_result[0]
 		rinchikeyweb = self.rinchikey_from_rinchi(rinchi, 'W'.encode('utf-8'))
 		return rinchi.decode('utf-8'), rinchikeyweb.decode('utf-8')
+	
+	def error_handle_wrap_rinchi(self, rxnsmiles):
+		try: return self.rxn_smiles_to_rinchi_rinchikey(rxnsmiles)
+		except: return None, None
+		
+	def error_handle_wrap_webrinchikey_only(self, rxnsmiles):
+		try: return self.rxn_smiles_to_rinchi_rinchikey(rxnsmiles)[1]
+		except: return None

@@ -1,6 +1,6 @@
 [project]
 name = "pyrheadb"
-version = "0.0.11"
+version = "0.0.12"
 authors = [
   { name="Anastasia Sveshnikova", email="anastasia.sveshnikova@sib.swiss" },
 ]
@@ -13,7 +13,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = ["setuptools", "pandas", "rdkit", "requests_ftp", "networkx", "tqdm", "matplotlib",
-    "pathlib", "rxnmapper", "pillow"]
+    "pathlib", "rxnmapper", "pillow", "cobra", "sparqlwrapper", "jupyterlab"]
 
 [project.urls]
 Homepage = "https://github.com/sib-swiss/pyrheadb"
@@ -31,5 +31,9 @@ requires = [
     "tqdm>=4.0.0",
     "matplotlib>=3.6.0",
     "pathlib>=1.0.1",
-    "pillow>=10.0.0"]
+    "pillow>=10.0.0",
+    "cobra>=0.29.0",
+    "sparqlwrapper>=0.0.0",
+    "jupyterlab>=4.2.0"]
+
 build-backend = "setuptools.build_meta"

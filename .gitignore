@@ -4,6 +4,9 @@ setup.py
 # Downloaded file of rhea version
 rhea-release.properties
 
+# cache of example jupyter notebooks
+examples/cache/*
+
 # in .gitignore for now
 Pipfile
 analytics/*

@@ -46,23 +46,32 @@ def get_all_human_reactions():
     """
     # Homo sapiens (human), species
     taxid = '9606'
-    
+        
+    # Display the 5 first rows
+    return get_all_taxid_reactions(taxid)
+
+def get_all_taxid_reactions(taxid):
+    """
+    Use uniprot taxid to get all associated rhea reactions
+    :return:
+    """
+
     sparql_Q6 = """
     #endpoint:https://sparql.rhea-db.org/sparql
-    
+
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     PREFIX up: <http://purl.uniprot.org/core/>
     PREFIX taxon:<http://purl.uniprot.org/taxonomy/>
     PREFIX rh: <http://rdf.rhea-db.org/>
     PREFIX ch:<http://purl.obolibrary.org/obo/>
-    
+
     SELECT DISTINCT ?protein
                     ?proteinId
                     ?proteinName
                     ?reaction
     WHERE {
       ?reaction rdfs:subClassOf rh:Reaction .
-    
+
       SERVICE <https://sparql.uniprot.org/sparql/> {
         ?protein up:mnemonic ?proteinId .
         ?protein up:recommendedName ?rn .
@@ -74,7 +83,6 @@ def get_all_human_reactions():
         ?ca up:catalyzedReaction ?reaction .
       }
     }
-    ORDER BY ?proteinName
     """
     
     try:
@@ -85,10 +93,6 @@ def get_all_human_reactions():
         print(e)
     
     if 'reaction' in df.columns:
-        df['rheaid']=df['reaction'].apply(lambda x: x.replace('http://rdf.rhea-db.org/',''))
-        
-    # Display the 5 first rows
-    return df
+        df['MASTER_ID'] = df['reaction'].apply(lambda x: x.replace('http://rdf.rhea-db.org/', ''))
     
-df = get_all_human_reactions()
-print(df['rheaid'])
+    return df
