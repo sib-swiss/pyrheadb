@@ -1,0 +1,198 @@
+chebiid	smiles	cmpname
+CHEBI:30089	CC([O-])=O	acetate
+CHEBI:15361	CC(=O)C([O-])=O	pyruvate
+CHEBI:16452	[O-]C(=O)CC(=O)C([O-])=O	oxaloacetate
+CHEBI:30031	[O-]C(=O)CCC([O-])=O	succinate
+CHEBI:16810	[O-]C(=O)CCC(=O)C([O-])=O	α-ketoglutarate
+CHEBI:4608	CSSC	dimethyl disulfide
+CHEBI:9349	CS(C)(=O)=O	dimethyl sulfone
+CHEBI:13941	NC(=O)[O-]	carbamate
+CHEBI:14272	O=CCF	fluoroacetaldehyde
+CHEBI:14428	ON=NO	hyponitrous acid
+CHEBI:15075	O=[Se](=O)([O-])[O-]	selenate
+CHEBI:15226	O=S(=O)([O-])SSS(=O)(=O)[O-]	tetrathionate
+CHEBI:15343	CC=O	acetaldehyde
+CHEBI:15377	O	H2O
+CHEBI:15378	[H+]	H(+)
+CHEBI:15379	O=O	O2
+CHEBI:15429	NO	hydroxylamine
+CHEBI:15571	NN	hydrazine
+CHEBI:15740	O=C[O-]	formate
+CHEBI:15832	NC(=O)NC(=O)[O-]	urea-1-carboxylate
+CHEBI:15858	[Br-]	bromide
+CHEBI:15987	O=S(=O)([O-])SS(=O)(=O)[O-]	trithionate
+CHEBI:16007	CS	methanethiol
+CHEBI:16144	[O-]P([O-])([O-])=[Se]	selenophosphate
+CHEBI:16170	[Hg]	Hg
+CHEBI:16183	C	methane
+CHEBI:16189	O=S(=O)([O-])[O-]	sulfate
+CHEBI:16199	NC(N)=O	urea
+CHEBI:16215	O=[PH]([O-])[O-]	phosphonate
+CHEBI:16223	C[As](C)(=O)[O-]	dimethylarsinate
+CHEBI:16236	CCO	ethanol
+CHEBI:16240	OO	H2O2
+CHEBI:16268	CC[N+](=O)[O-]	nitroethane
+CHEBI:16301	O=N[O-]	nitrite
+CHEBI:16382	[I-]	iodide
+CHEBI:16397	NC=O	formamide
+CHEBI:16480	[N]=O	nitric oxide
+CHEBI:16481	NC(=O)NCO	N-(hydroxymethyl)urea
+CHEBI:16526	O=C=O	CO2
+CHEBI:16573	O=C=S	carbonyl sulfide
+CHEBI:16698	N#CN	cyanamide
+CHEBI:16793	[Hg+2]	Hg(2+)
+CHEBI:16842	C=O	formaldehyde
+CHEBI:17045	N#[N+][O-]	nitrous oxide
+CHEBI:17051	[F-]	fluoride
+CHEBI:17071	O=CCO	glycolaldehyde
+CHEBI:17194	ClCBr	bromochloromethane
+CHEBI:17245	[C-]#[O+]	CO
+CHEBI:17359	O=S([O-])[O-]	sulfite
+CHEBI:17437	CSC	dimethyl sulfide
+CHEBI:17441	[O-][Cl+][O-]	chlorite
+CHEBI:17544	O=C([O-])O	hydrogencarbonate
+CHEBI:17606	II	diiodine
+CHEBI:17632	O=[N+]([O-])[O-]	nitrate
+CHEBI:17790	CO	methanol
+CHEBI:17826	C[As](O)O	methylarsonous acid
+CHEBI:17996	[Cl-]	chloride
+CHEBI:17997	N#N	N2
+CHEBI:18022	N#C[S-]	thiocyanate
+CHEBI:18036	O=P([O-])([O-])OP(=O)([O-])OP(=O)([O-])[O-]	triphosphate
+CHEBI:18138	NC(=O)NC(N)=O	biuret
+CHEBI:18153	C=C	ethene
+CHEBI:18172	O=C([O-])CF	fluoroacetate
+CHEBI:18212	O=[Se]([O-])[O-]	selenite
+CHEBI:18276	[H][H]	H2
+CHEBI:18407	C#N	hydrogen cyanide
+CHEBI:18420	[Mg+2]	Mg(2+)
+CHEBI:18421	[O][O-]	superoxide
+CHEBI:22191	CC(=O)OP(=O)([O-])[O-]	acetyl phosphate
+CHEBI:23012	S=C=S	carbon disulfide
+CHEBI:23808	C[As](C)O	dimethylarsinous acid
+CHEBI:24090	O=COP(=O)([O-])[O-]	formyl phosphate
+CHEBI:24757	OCl	hypochlorous acid
+CHEBI:25224	CS(=O)(=O)[O-]	methanesulfonate
+CHEBI:25941	O=NO[O-]	peroxynitrite
+CHEBI:26833	[S]	sulfur
+CHEBI:27518	C#C	acetylene
+CHEBI:27856	CC(N)=O	acetamide
+CHEBI:28262	CS(C)=O	dimethyl sulfoxide
+CHEBI:28938	[NH4+]	NH4(+)
+CHEBI:29033	[Fe+2]	Fe(2+)
+CHEBI:29034	[Fe+3]	Fe(3+)
+CHEBI:29035	[Mn+2]	Mn(2+)
+CHEBI:29036	[Cu+2]	Cu(2+)
+CHEBI:29041	[Mn+3]	Mn(3+)
+CHEBI:29101	[Na+]	Na(+)
+CHEBI:29103	[K+]	K(+)
+CHEBI:29105	[Zn+2]	Zn(2+)
+CHEBI:29108	[Ca+2]	Ca(2+)
+CHEBI:29195	N#C[O-]	cyanate
+CHEBI:29198	O=[PH2][O-]	phosphinate
+CHEBI:29202	N=C=O	isocyanate
+CHEBI:29232	[O-]I	hypoiodite
+CHEBI:29242	[O-][As](O)O	arsenite
+CHEBI:29250	[O-]Br	hypobromite
+CHEBI:29317	[SeH-]	hydrogenselenide
+CHEBI:29323	C/[N+]([O-])=N/CO	methylazoxymethanol
+CHEBI:29445	N#C[Se-]	selenocyanate
+CHEBI:29805	O=C([O-])CO	glycolate
+CHEBI:29919	[SH-]	hydrogen sulfide
+CHEBI:29920	NP(=O)([O-])[O-]	phosphoramidate
+CHEBI:30046	O=[V+2]	VO(2+)
+CHEBI:30066	O=C([O-])CS	thioglycolate
+CHEBI:30087	NC(N)=[NH2+]	guanidine
+CHEBI:30320	CC(=O)[S-]	thioacetate
+CHEBI:30477	O=[Te]([O-])[O-]	tellurite
+CHEBI:30623	O=C([O-])C(=O)[O-]	oxalate
+CHEBI:30742	OCCO	ethylene glycol
+CHEBI:33007	[Cr+6]	Cr(6+)
+CHEBI:33019	O=P([O-])([O-])OP(=O)([O-])O	diphosphate
+CHEBI:33409	C[As](=O)([O-])O	methylarsonate
+CHEBI:33542	O=S(=O)([O-])S	thiosulfate
+CHEBI:33722	[SH]12[Fe]3[SH]4[Fe]1[SH]1[Fe+]2[SH]3[Fe+]41	[4Fe-4S](2+) cluster
+CHEBI:33723	[SH]12[Fe]3[SH]4[Fe]1[SH]1[Fe]2[SH]3[Fe+]41	[4Fe-4S](1+) cluster
+CHEBI:33737	S1[Fe+]S[Fe+]1	[2Fe-2S](2+)
+CHEBI:33738	S1[Fe]S[Fe+]1	[2Fe-2S](1+)
+CHEBI:33751	S1[Fe]2S[Fe+]3S[Fe]1[SH]23	[3Fe-4S](1+) cluster
+CHEBI:34779	O=CC=O	glyoxal
+CHEBI:35404	O=[Cr](=O)([O-])[O-]	chromate
+CHEBI:36014	CCl	chloromethane
+CHEBI:36264	O=[Mo](=O)([O-])[O-]	molybdate
+CHEBI:36361	OP(O)O	phosphite
+CHEBI:36655	O=CC(=O)[O-]	glyoxylate
+CHEBI:39275	CBr	bromomethane
+CHEBI:39282	CI	iodomethane
+CHEBI:41132	O[B-](O)(O)O	tetrahydroxoborate
+CHEBI:42530	CC(=O)OO	peracetic acid
+CHEBI:43474	O=P([O-])([O-])O	phosphate
+CHEBI:44423	NC(=O)NO	hydroxyurea
+CHEBI:44951	O=P[O-]	dioxidophosphate
+CHEBI:46502	O=[W](=O)([O-])[O-]	tungstate
+CHEBI:46511	CCS	ethanethiol
+CHEBI:47402	S1[Fe]2S[Fe]3S[Fe]1[SH]23	[3Fe-4S](0) cluster
+CHEBI:48597	O=[As]([O-])([O-])O	arsenate
+CHEBI:48775	[Cd+2]	Cd(2+)
+CHEBI:48828	[Co+2]	Co(2+)
+CHEBI:49468	[Ag+]	Ag(+)
+CHEBI:49544	[Cr+3]	Cr(3+)
+CHEBI:49547	[Cs+]	Cs(+)
+CHEBI:49552	[Cu+]	Cu(+)
+CHEBI:49709	[O-][Cl+2]([O-])[O-]	chlorate
+CHEBI:49713	[Li+]	Li(+)
+CHEBI:49786	[Ni+2]	Ni(2+)
+CHEBI:49807	[Pb+2]	Pb(2+)
+CHEBI:49847	[Rb+]	Rb(+)
+CHEBI:57305	[NH3+]CC(=O)[O-]	glycine
+CHEBI:57418	[NH3+]CCP(=O)([O-])O	(2-aminoethyl)phosphonate
+CHEBI:57431	NC(=O)NC[NH3+]	N-(aminomethyl)urea
+CHEBI:57488	O=C([O-])CP(=O)([O-])O	phosphonoacetate
+CHEBI:57603	[NH3+]CCO	ethanolamine
+CHEBI:57801	O=P1([O-])OP(=O)([O-])OP(=O)([O-])O1	trimetaphosphate
+CHEBI:57840	CNC(N)=[NH2+]	methylguanidine
+CHEBI:57853	[NH3+]CCS(=O)[O-]	hypotaurine
+CHEBI:58029	[NH3+]CCS	cysteamine
+CHEBI:58033	O=C([O-])COP(=O)([O-])[O-]	2-phosphoglycolate
+CHEBI:58040	C[NH2+]C	dimethylamine
+CHEBI:58190	[NH3+]CCOP(=O)([O-])[O-]	phosphoethanolamine
+CHEBI:58213	[NH3+]CC=O	aminoacetaldehyde
+CHEBI:58228	NC(=O)OP(=O)([O-])[O-]	carbamoyl phosphate
+CHEBI:58246	O=CCS(=O)(=O)[O-]	sulfoacetaldehyde
+CHEBI:58261	COS(=O)(=O)[O-]	monomethyl sulfate
+CHEBI:58319	O=S(=O)([O-])CCS	coenzyme M
+CHEBI:58363	NC(=O)C(=O)[O-]	oxamate
+CHEBI:58383	O=CCP(=O)([O-])O	phosphonoacetaldehyde
+CHEBI:58824	O=C([O-])CS(=O)(=O)[O-]	sulfoacetate
+CHEBI:59059	CN=C=O	methyl isocyanate
+CHEBI:59338	C[NH3+]	methylamine
+CHEBI:60991	O=P([O-])(O)CCO	2-hydroxyethylphosphonate
+CHEBI:61112	CSC#N	methyl thiocyanate
+CHEBI:61904	O=S(=O)([O-])CCO	2-hydroxyethane-1-sulfonate
+CHEBI:61909	CCS(=O)(=O)[O-]	ethane-1-sulfonate
+CHEBI:68684	CP(=O)([O-])O	methylphosphonate
+CHEBI:71199	O=P([O-])(O)CO	hydroxymethylphosphonate
+CHEBI:71624	C[Te](=O)(=O)[O-]	methanetellurite
+CHEBI:74631	[NH3+]CCSP(=O)([O-])[O-]	cysteamine S-phosphate
+CHEBI:77699	COC=O	methyl formate
+CHEBI:77846	[NH2+]=CC(=O)[O-]	2-iminoacetate
+CHEBI:77894	C/C=[N+](\[O-])O	ethylnitronate
+CHEBI:78619	O=[Fe][O-]	iron(III) oxide-hydroxide
+CHEBI:84879	N=O	nitroxyl
+CHEBI:85033	[Co+]	Co(+)
+CHEBI:85035	C[Co+2]	methyl-Co(III)
+CHEBI:86994	O=C([O-])OP(=O)([O-])O	carboxyphosphate
+CHEBI:91254	O=C([O-])P(=O)([O-])O	phosphonoformate
+CHEBI:133603	CS(=O)[O-]	methanesulfinate
+CHEBI:133674	[NH3+]CP(=O)([O-])[O-]	aminomethylphosphonate
+CHEBI:133907	N#CSO	hypothiocyanous acid
+CHEBI:133927	O=CCOP(=O)([O-])[O-]	glycolaldehyde phosphate
+CHEBI:134098	C[C@@H]([NH3+])P(=O)([O-])[O-]	(S)-1-aminoethylphosphonate
+CHEBI:136511	O=[Mn]=O	MnO2
+CHEBI:136833	O=CCOP(=O)([O-])OP(=O)([O-])OP(=O)([O-])[O-]	glycolaldehyde triphosphate
+CHEBI:141612	[NH3+]C[C@H](O)P(=O)([O-])O	(1R)-(2-amino-1-hydroxyethyl)phosphonate
+CHEBI:142501	O=CCS(=O)[O-]	2-sulfinoacetaldehyde
+CHEBI:194177	C[C@H](O)P(=O)([O-])O	(1R)-(1-hydroxyethyl)phosphonate
+CHEBI:194307	NC(=[NH2+])NO	N-hydroxyguanidine
+CHEBI:507393	[NH3+]CCS(=O)(=O)[O-]	taurine
+CHEBI:566789	CC[NH3+]	ethylamine

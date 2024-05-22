@@ -19,6 +19,8 @@ src/pyrheadb/gangliosides/*
 tests/test_rhea_db.py
 tests/test_rhea_db/
 
+# cache of pyrheadb scripts running
+src/pyrheadb/cache/
 
 #output folders
 rhea-versions/*
