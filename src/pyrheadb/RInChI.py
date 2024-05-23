@@ -42,11 +42,11 @@ from rdkit import Chem
 
 class RInChI():
 	def __init__(self):
-		lib_path = os.path.dirname(__file__).replace('src/pyrheadb', '')+'/bin/rinchi_lib/'
+		lib_path = os.path.join(os.path.dirname(__file__),'bin','rinchi_lib')#.replace('src/pyrheadb', '')+'/bin/rinchi_lib/'
 		if os.sep == "\\":
-			self.lib_handle = cdll.LoadLibrary(lib_path + "windows/x86_64/librinchi.dll")
+			self.lib_handle = cdll.LoadLibrary(os.path.join(lib_path,"windows","x86_64","librinchi.dll"))
 		else:
-			self.lib_handle = cdll.LoadLibrary(lib_path + "linux/x86_64/librinchi.so.1.0.0")
+			self.lib_handle = cdll.LoadLibrary(os.path.join(lib_path,"linux","x86_64","librinchi.so.1.0.0"))
 		
 		self.lib_latest_error_message = self.lib_handle.rinchilib_latest_err_msg
 		self.lib_latest_error_message.restype = c_char_p

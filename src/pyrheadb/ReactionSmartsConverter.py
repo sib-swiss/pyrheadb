@@ -27,7 +27,7 @@ class ReactionSmartsConverter():
 		self.rxn_mapper = AtomMapper()
 		self.df_smiles = rhea_db.df_smiles_master_id.copy()
 		
-	def convert_smiles_to_smarts(self):
+	def convert_all_rhea_smiles_to_smarts(self):
 		"""
 		Main function of the class:
 		Converts SMILES to SMARTS and outputs the result into the text files

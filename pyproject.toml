@@ -1,6 +1,6 @@
 [project]
 name = "pyrheadb"
-version = "0.0.13"
+version = "0.0.15"
 authors = [
   { name="Anastasia Sveshnikova", email="anastasia.sveshnikova@sib.swiss" },
 ]
@@ -21,19 +21,28 @@ Issues = "https://github.com/sib-swiss/pyrheadb/issues"
 
 
 [build-system]
-requires = [
-    "setuptools>=61.0",
-    "requests_ftp>=0.3.1",
-    "rxnmapper>=0.3.0",
-    "rdkit>=2023.9.1",
-    "pandas>=2.0.0",
-    "networkx>=3.0",
-    "tqdm>=4.0.0",
-    "matplotlib>=3.6.0",
-    "pathlib>=1.0.1",
-    "pillow>=10.0.0",
-    "cobra>=0.29.0",
-    "sparqlwrapper>=0.0.0",
-    "jupyterlab>=4.2.0"]
+requires = ["setuptools>=61.0", "wheel"]
+#requires = [
+#    "setuptools>=61.0",
+#    "requests_ftp>=0.3.1",
+#    "rxnmapper>=0.3.0",
+#    "rdkit>=2023.9.1",
+#    "pandas>=2.0.0",
+#    "networkx>=3.0",
+#    "tqdm>=4.0.0",
+#    "matplotlib>=3.6.0",
+#    "pathlib>=1.0.1",
+#    "pillow>=10.0.0",
+#    "cobra>=0.29.0",
+#    "sparqlwrapper>=0.0.0",
+#    "jupyterlab>=4.2.0"]
 
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["pyrheadb"]
+include-package-data = true
+
+#[tool.setuptools.package-data]
+#pyrheadb = ["pyrheadb/biochemical_assumptions", "pyrheadb/modeling_assumptions"]

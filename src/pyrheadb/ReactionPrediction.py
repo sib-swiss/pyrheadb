@@ -1,6 +1,7 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import json
+import os
 
 # from rdkit import RDLogger
 # RDLogger.DisableLog('rdApp.*')
@@ -12,19 +13,22 @@ from .Reaction import Reaction
 # the resulting reaction SMARTS on these compounds, gets products and checks balance for the resulting reactions.
 #####################################################################################################################
 class ReactionPrediction:
-    def __init__(self):
+    def __init__(self, rhea_db):
         """
         Initializes the ReactionPrediction class.
         """
         self.substrates = None
         self.reactions = []
+        self.RDBv_loc = rhea_db.RDBv_loc
 
     def load_smarts_data(self):
         """
         Correct the location of SMARTS json
         self.smarts_data: DataFrame or dictionary containing reaction SMARTS patterns.
         """
-        with open('data/rheaSmarts.json') as j:
+        smarts_directory = os.path.join(self.RDBv_loc, 'smarts')
+        os.makedirs(smarts_directory, exist_ok=True)
+        with open(os.path.join(smarts_directory,'rheaSmarts.json')) as j:
             self.smarts_data = json.load(j)
             
     def set_substrates(self, substrate_smiles):
