@@ -1,6 +1,6 @@
 [project]
 name = "pyrheadb"
-version = "0.0.12"
+version = "0.0.13"
 authors = [
   { name="Anastasia Sveshnikova", email="anastasia.sveshnikova@sib.swiss" },
 ]
