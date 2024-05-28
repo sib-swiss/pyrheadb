@@ -1,7 +1,9 @@
+import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import json
 import os
+import re
 
 # from rdkit import RDLogger
 # RDLogger.DisableLog('rdApp.*')
@@ -9,204 +11,323 @@ import os
 from .Reaction import Reaction
 
 #####################################################################################################################
-# ReactionPrediction class that takes a compound or a set of compounds as potential substrates and tests
-# the resulting reaction SMARTS on these compounds, gets products and checks balance for the resulting reactions.
+#   ReactionPrediction class that takes a compound or a set of compounds as potential substrates and tests          #
+#   the resulting reaction SMARTS on these compounds, gets products and checks balance for the resulting reactions. #
 #####################################################################################################################
 class ReactionPrediction:
     def __init__(self, rhea_db):
         """
         Initializes the ReactionPrediction class.
         """
-        self.substrates = None
-        self.reactions = []
-        self.RDBv_loc = rhea_db.RDBv_loc
-
+        self.rdb = rhea_db
+        self.rhea_db_version_location = rhea_db.rhea_db_version_location
+        self.rxnclass = Reaction()
+        self.account_H_in_balance = False
+        self.star_smarts_only = True # use only template/changeable part (compound with *) or full smarts (with defined cofactors, set this to False)
+        self.rdkit_stereo_rxn_data = dict()
+        self.rdkit_flat_rxn_data = dict()  # not stereo - remove all @ from reactions
+        self.defined_cofactor_smarts=dict()
+    
+    def set_account_H_in_balance(self, new_account_H_in_balance_option):
+        """
+        Reset the defaut option for handling hydrogen in calculating reaction balance
+        :param account_H_in_balance_option: default False
+        :return:
+        """
+        self.account_H_in_balance = new_account_H_in_balance_option
+    
+    def set_star_smarts_only(self, new_star_smarts_only_option):
+        self.star_smarts_only = new_star_smarts_only_option
     def load_smarts_data(self):
         """
         Correct the location of SMARTS json
         self.smarts_data: DataFrame or dictionary containing reaction SMARTS patterns.
         """
-        smarts_directory = os.path.join(self.RDBv_loc, 'smarts')
-        os.makedirs(smarts_directory, exist_ok=True)
+        smarts_directory = os.path.join(self.rhea_db_version_location, 'smarts')
         with open(os.path.join(smarts_directory,'rheaSmarts.json')) as j:
             self.smarts_data = json.load(j)
-            
-    def set_substrates(self, substrate_smiles):
+        self.parse_all_smarts_into_rdkit_rxn()
+        if self.star_smarts_only:
+            self.load_defined_cofactor_smarts()
+    
+    def parse_all_smarts_into_rdkit_rxn(self):
         """
-        Set the substrates for reaction prediction.
+        Parse all SMARTS extracted from Rhea reactions and create rdkit reactions
+        class rdkit.Chem.rdChemReactions.ChemicalReaction((object)self)
+        see https://rdkit.org/docs/source/rdkit.Chem.rdChemReactions.html for more info about the class
+        :return:
+        """
+        
+        for rxnid, smarts in self.smarts_data.items():
+            self.rdkit_stereo_rxn_data[rxnid] = self.parse_one_smarts_into_rdkit_rxn(smarts)
+            self.rdkit_flat_rxn_data[rxnid] = self.parse_one_smarts_into_rdkit_rxn(smarts.replace('@', '')) # could be not enough, need to see use cases when stereo info is still left
+            
+    def parse_one_smarts_into_rdkit_rxn(self, smarts):
+        """
+        This function transforms smarts into rdkit rxn
+        https://rdkit.org/docs/source/rdkit.Chem.rdChemReactions.html#rdkit.Chem.rdChemReactions.ReactionFromSmarts
+        :param smarts: reaction SMARTS
+        :return:
+        """
+        rxn = AllChem.ReactionFromSmarts(
+            self.rework_smarts(smarts)
+        )
+        # Chem.rdChemReactions.SanitizeRxn(rxn) # commented since does not help
+        # The operations carried out by default are:
+        #         fixRGroups(): sets R group labels on mapped dummy atoms when possible
+        #         fixAtomMaps(): attempts to set atom maps on unmapped R groups
+        #         adjustTemplate(): calls adjustQueryProperties() on all reactant templates
+        #         fixHs(): merges explicit Hs in the reactant templates that don’t map to heavy atoms
+        # None of these operations ensures that the charge is interpreted correctly
+
+
+        return rxn
+    
+    def rework_smarts(self, smarts):
+        """
+        Prepare original SMARTS from rhea in Rhea order to be imported into rxn with params
+        :param smarts:
+        :return:
+        """
+        undefined_reactant_templates, \
+            defined_reactant_templates, \
+            undefined_product_templates, \
+            defined_product_templates = self.__split_reaction_smarts(smarts)
+        
+        if self.star_smarts_only == False:
+            # full_rxn_smarts
+            smarts = '.'.join(undefined_reactant_templates + defined_reactant_templates) + '>>' + \
+                     '.'.join(undefined_product_templates + defined_product_templates)
+        if self.star_smarts_only == True:
+            # only_changeable_part_rxn_smarts
+            smarts = '.'.join(undefined_reactant_templates) + '>>' + \
+                     '.'.join(undefined_product_templates)
+        
+        smarts = self.add_explicit_zero_charge(smarts)
+        return smarts
+    
+    def __split_reaction_smarts(self, smarts):
+        reactant_templates = smarts.split('>>')[0].split('.')
+        product_templates = smarts.split('>>')[1].split('.')
+    
+        undefined_reactant_templates = [t for t in reactant_templates if '*' in t]
+        defined_reactant_templates = [t for t in reactant_templates if '*' not in t]
+        undefined_product_templates = [t for t in product_templates if '*' in t]
+        defined_product_templates = [t for t in product_templates if '*' not in t]
+        
+        return undefined_reactant_templates, \
+               defined_reactant_templates, \
+               undefined_product_templates, \
+                defined_product_templates
+    
+
+    def add_explicit_zero_charge(self, smarts):
+        # This regex pattern captures elements possibly followed by hydrogens and digits, optional charges, and indices
+        pattern = r'(\[)([A-Z][a-z]?H?\d*)([+-]?\d*)?(:\d+)?(\])'
+    
+        def replace(match):
+            start_bracket = match.group(1)
+            element_hydrogen = match.group(2)  # Includes element and any hydrogen notation
+            charge = match.group(3)
+            index = match.group(4) if match.group(4) else ''
+            end_bracket = match.group(5)
+        
+            # Check if a charge is already specified, if not, append '+0'
+            if not charge:
+                charge = '+0'
+        
+            return f'{start_bracket}{element_hydrogen}{charge}{index}{end_bracket}'
+    
+        # Split reactants and products using '>>'
+        reactants, products = smarts.split('>>')
+        # Apply regex replacement to both reactants and products
+        updated_reactants = re.sub(pattern, replace, reactants)
+        updated_products = re.sub(pattern, replace, products)
+    
+        return '>>'.join([updated_reactants, updated_products])
+    
+    def load_defined_cofactor_smarts(self):
+        for rxnid, smarts in self.smarts_data.items():
+            self.defined_cofactor_smarts[rxnid] = self.get_defined_substrates_and_products(smarts)
+    def get_defined_substrates_and_products(self, smarts):
+        _, defined_reactant_templates, _, defined_product_templates = self.__split_reaction_smarts(smarts)
+        reactant_smiles = [self.smiles_from_smarts(sm) for sm in defined_reactant_templates]
+        product_smiles = [self.smiles_from_smarts(sm) for sm in defined_product_templates]
+        return (reactant_smiles, product_smiles)
+    
+    def smiles_from_smarts(self, smarts):
+        mol = Chem.MolFromSmarts(smarts)
+        # Solution to remove atom map numbers as decribed at https://github.com/rdkit/rdkit/discussions/3837
+        for atom in mol.GetAtoms():
+            atom.SetAtomMapNum(0)
+        return Chem.MolToSmiles(mol)
+    def check_substrate(self, substrate_smiles):
+        """
+        Set one substrate for reaction prediction.
         :param substrate_smiles: String or list of SMILES representing substrates.
         """
-        if isinstance(substrate_smiles, str):
-            substrate_smiles = [substrate_smiles]
-        correct_substrate_smiles = []
-        for smiles in substrate_smiles:
-            if not Chem.MolFromSmiles(smiles):
-                print(f'Incorrect SMILES: impossible to import as rdkit mol object{smiles}')
-            else:
-                correct_substrate_smiles.append(smiles)
-        self.substrates = correct_substrate_smiles
+        if not Chem.MolFromSmiles(substrate_smiles):
+            print(f'Incorrect SMILES: impossible to import as rdkit mol object: {substrate_smiles}')
+            return None
+        return substrate_smiles
 
-    def predict_products(self):
+    def predict_products(self, input_substrates):
         """
         Predicts products using defined and undefined templates.
+        input_substrates can be list (of SMILES) or str (SMILES).
+        If list, the total number should not be more than 3! (biochemically impossible)
+        For list, RunReactants rdkit function is used.
+        For str, Run Reactant rdkit function is used.
+        return: reactions_to_products - list of rheaids with product versions
         """
-        if self.substrates is None:
+        if input_substrates is None:
             raise ValueError("Substrates not set. Please set substrates before predicting products.")
+        
+        # Stereochemistry Handling
+        # The handling of stereochemistry (@ symbols in SMILES) based on whether the substrate has stereochemistry
+        # is a specific but important detail, especially in pharmaceutical applications.
+        # This should also be integrated to ensure the correct chemical context is maintained.
+        if any(['@' in i for i in input_substrates]): rxn_used = self.rdkit_stereo_rxn_data
+        else: rxn_used = self.rdkit_flat_rxn_data
+        
+        # Produce list of reaction ids with product options as
+        # [(rheaid1:[products1-1, products1-2]), (rheaid2:[products2-1, products2-2]), ...]
+        if isinstance(input_substrates, str):
+            reactions_to_products = self.predict_products_one_reactant(input_substrates, rxn_used)
+        if isinstance(input_substrates, list):
+            reactions_to_products = self.predict_products_several_reactants(input_substrates, rxn_used)
+        return reactions_to_products
+
+    def predict_products_one_reactant(self, substrate_smiles, rxn_used):
+        """
+        predict potential products of singe reactants
+        :param input_substrates: substrates of the reaction (SMILES)
+        :param rxn_used: rdkit ChemicalReaction objects - selected is stereo or flat
+        :return: list of products
+        """
+        if not self.check_substrate(substrate_smiles):
+            return None
+        rheaid_to_products = []
+        for rheaid, rxn in rxn_used.items():
+            try:
+                products = self.predict_products_one_reactant_one_reaction(substrate_smiles, rxn)
+            except Exception as e:
+                print('Problematic rheaid', rheaid)
+                print(e)
+            rheaid_to_products.append((rheaid, products))
+        return rheaid_to_products
     
-        for smarts in self.smarts_data['SMARTS']:
-            reactant_templates = smarts.split('>>')[0].split('.')
-            product_templates = smarts.split('>>')[1].split('.')
-        
-            undefined_reactant_templates = [t for t in reactant_templates if '*' in t]
-            defined_reactant_templates = [t for t in reactant_templates if '*' not in t]
-            undefined_product_templates = [t for t in product_templates if '*' in t]
-            defined_product_templates = [t for t in product_templates if '*' not in t]
-        
-            rxn_smarts = '.'.join(undefined_reactant_templates + defined_reactant_templates) + '>>' + \
-                         '.'.join(undefined_product_templates + defined_product_templates)
-                
-            rxn = AllChem.ReactionFromSmarts(rxn_smarts)
-            for substrate in self.substrates:
-                # Stereochemistry Handling
-                # The handling of stereochemistry (@ symbols in SMILES) based on whether the substrate has stereochemistry
-                # is a specific but important detail, especially in pharmaceutical applications.
-                # This should also be integrated to ensure the correct chemical context is maintained.
-                if not '@' in substrate:
-                    rxn = AllChem.ReactionFromSmarts(rxn_smarts.replace('@', ''))
-                ps = rxn.RunReactants((Chem.MolFromSmiles(substrate),))
-                for p_set in ps:
-                    products = [Chem.MolToSmiles(p) for p in p_set]
-                    self.reactions.append(
-                        {'substrate': substrate, 'products': products, 'smarts': rxn_smarts})
-
-    def check_balance(self):
+    def predict_products_one_reactant_one_reaction(self, substrate_smiles, rxn):
         """
-        Check the balance of the reactions based on atom counts.
+        Individual block of reaction prediction: one set of substrates + one reaction
+        :param input_substrates: SMILES
+        :param rxn: rdkit ChemicalReaction object
+        :return: list of SMILES of products
         """
-        balanced_reactions = []
-        for reaction_info in self.reactions:
-            substrate_smiles = reaction_info['substrate']
-            for product_smiles in reaction_info['products']:
-                reaction_smiles = substrate_smiles + '>>' + product_smiles
-                reaction_obj = Reaction()
-                balance = reaction_obj.check_reaction_balance(reaction_smiles)
-                if balance:
-                    balanced_reactions.append({
-                        'substrate': substrate_smiles,
-                        'products': product_smiles,
-                        'smarts': reaction_info['smarts']
-                    })
-        return balanced_reactions
-
-    def get_reactions(self):
-        """
-        Get a list of reactions with substrates, products, and the used SMARTS.
-        """
-        return self.reactions
+        if rxn.GetNumReactantTemplates() != 1:
+            return None
+        ps = rxn.RunReactants([Chem.MolFromSmiles(substrate_smiles)])
+        products_all = [self.mol_products_to_smiles(product_set) for product_set in ps]
+        return products_all
     
-    def get_balanced_reactions(self):
-        return self.check_balance()
+    def predict_products_several_reactants(self, input_substrates, rxn_used):
+        """
+        predict potential products of mixing several reactants (in one reaction, so theoretically the number should not be more than 2)
+        :param input_substrates: substrates of the reaction (list of SMILES)
+        :param rxn_used: rdkit ChemicalReaction objects - selected is stereo or flat
+        :return: list of products
+        """
+        if not all([self.check_substrate(substrate_smiles) for substrate_smiles in input_substrates]):
+            return None
+        rheaid_to_products = []
+        for rheaid, rxn in rxn_used.items():
+            products = self.predict_products_several_reactants_one_reaction(input_substrates, rxn)
+            rheaid_to_products.append((rheaid, products))
+        return rheaid_to_products
+    
+    def predict_products_several_reactants_one_reaction(self, input_substrates, rxn):
+        """
+        Individual block of reaction prediction: one set of substrates + one reaction
+        :param input_substrates: list of SMILES
+        :param rxn: rdkit ChemicalReaction object
+        :return: list of SMILES of products
+        """
+        if rxn.GetNumReactantTemplates() != len(input_substrates):
+            return None
+        ps = rxn.RunReactants([Chem.MolFromSmiles(substrate) for substrate in input_substrates])
+        products_all = [self.mol_products_to_smiles(product_set) for product_set in ps]
+        return products_all
+    
+    def mol_products_to_smiles(self, product_set):
+        # The molecules have not been sanitized, so it’s a good idea to at least update the valences before continuing:
+        for p in product_set:
+            p.UpdatePropertyCache(strict=False)
+            Chem.SanitizeMol(p, Chem.SanitizeFlags.SANITIZE_PROPERTIES)
+        # Convert to SMILES
+        products = [Chem.MolToSmiles(p) for p in product_set]
+
+        return products
+    
+    def predict_reactions(self, input_substrates):
+        """
+        Predict reactions for input substrates
+        :param input_substrates:
+        :return: df_rheaid_rxnsmiles - pandas.DataFrame with source rheaid and generated reactions per id
+        """
+        rheaid2products = self.predict_products(input_substrates)
         
-    def output_results(self, filepath):
+        # Handle the situation when no products are predicted
+        rheaid2products = [i for i in rheaid2products if i[1] is not None]
+        if not rheaid2products:
+            print('No reactions possible for input substrates ', input_substrates)
+            return None
+        
+        # Harmonise handling of input substrates for SMILES as str and list of SMILES for several substrates
+        if isinstance(input_substrates, str):
+            input_substrates=[input_substrates]
+        
+        rheaid2reaction = []
+        # Export all product sets as reactions
+        for rheaid, products in rheaid2products:
+            for product_set in products:
+                reaction_smiles = self.reaction_smiles_from_reactants_and_products(rheaid=rheaid, substrates=input_substrates, products=product_set)
+                rheaid2reaction.append((rheaid, reaction_smiles))
+        df_rheaid_rxnsmiles = pd.DataFrame(rheaid2reaction,columns=['rheaid', 'rxnsmiles'])
+        df_rheaid_rxnsmiles['balance']=df_rheaid_rxnsmiles['rxnsmiles'].apply(self.check_balance)
+        print('QC: number of unbalanced reactions generated:', len(df_rheaid_rxnsmiles[df_rheaid_rxnsmiles['balance']==False]))
+        return df_rheaid_rxnsmiles
+        
+    def reaction_smiles_from_reactants_and_products(self, rheaid='rheaid', substrates=[], products=[]):
         """
-        Outputs the results to a file.
+        convert substrates and products lists into reaction SMILES
+        :param substrates: SMILES of compounds
+        :param products: SMILES of compounds
+        :return: reaction SMILES
         """
-        with open(filepath, 'w') as file:
-            for reaction in self.reactions:
-                file.write(f"{reaction['substrate']}>>{reaction['products']}\n")
-
-
-###########################
-# Apply SMARTS
-############################
-
-
-# import json
-#
-#
-#
-# def enumerate_one_reaction_template(rhea_smarts, undefined_reactant_smiles, direction='forward'):
-#
-#     # print('rhea_smarts',rhea_smarts)
-#     reactant_templates = rhea_smarts.split('>>')[0].split('.')
-#     defined_reactant_templates = [templ for templ in reactant_templates if not '*' in templ]
-#     undefined_reactant_templates = [templ for templ in reactant_templates if '*' in templ]
-#
-#     # print("defined_reactant_templates, undefined_reactant_templates")
-#     # print(defined_reactant_templates, undefined_reactant_templates)
-#
-#     product_templates = rhea_smarts.split('>>')[1].split('.')
-#     defined_product_templates = [templ for templ in product_templates if not '*' in templ]
-#     undefined_product_templates = [templ for templ in product_templates if '*' in templ]
-#
-#     if direction == 'forward':
-#         rxn_smarts = '.'.join(undefined_reactant_templates + defined_reactant_templates) + '>>' + \
-#                      '.'.join(undefined_product_templates + defined_product_templates)
-#     # print("rxn_smarts direction")
-#     # print(rxn_smarts)
-#
-#     if not '@' in undefined_reactant_smiles:
-#         stereo = False
-#
-#     if stereo == False:
-#         rxn_smarts = rxn_smarts.replace('@', '')
-#
-#     rxn = rdChemReactions.ReactionFromSmarts(rxn_smarts)
-#
-#     # Assembling the input for forward enumeration of the library
-#     # print("undefined_reactant_smiles")
-#     # print(undefined_reactant_smiles)
-#     # print("defined_reactant_templates")
-#     # print(defined_reactant_templates)
-#     undefined_reactant_mols = [Chem.MolFromSmiles(undefined_reactant_smiles)]
-#     defined_reactant_mols = [Chem.MolFromSmiles(m) for m in defined_reactant_templates]
-#     reactant_mols = undefined_reactant_mols + defined_reactant_mols
-#     # print(lib)
-#
-#     # Enumerating forward library
-#     results_total = rxn.RunReactants(reactant_mols)
-#     options_products_smiles = []
-#     for result_option in results_total:
-#         try:
-#             product_smiles = [Chem.MolToSmiles(m) for m in result_option]
-#             product_smiles.sort()
-#             options_products_smiles.append('.'.join(product_smiles))
-#         except:
-#             pass
-#     options_products_smiles = set(options_products_smiles)
-#     reactions = []
-#     if options_products_smiles:
-#         reactant_smiles = [Chem.MolToSmiles(m) for m in reactant_mols]
-#         reactant_smiles.sort()
-#         reactant_smiles = '.'.join(reactant_smiles)
-#         for option in options_products_smiles:
-#             reaction_smiles = reactant_smiles + '>>' + option
-#             reaction = Reaction()
-#             balance = reaction.check_reaction_balance(reaction_smiles)
-#             if balance:
-#                 reactions.append(reaction)
-#     return reactions
-#
-# def enumerate_one_compound(compound):
-#     with open(f'individual_compound_results/{compound}.tsv', 'w') as w:
-#         w.write('rheaid\treaction_option\n')
-#         # count = 0
-#         # count_products = 0
-#         for rheaid, rhea_smarts in data_rxn_smarts.items():
-#             # print(rheaid)
-#             if rhea_smarts:
-#                 reactants = rhea_smarts.split('>>')[0].split('.')
-#                 star_reactants = [r for r in reactants if '*' in r]
-#                 if len(star_reactants) == 1:
-#                     # print(star_reactants)
-#                     reactions = enumerate_one_reaction_template(rhea_smarts, compound, direction='forward')
-#                     # count +=1
-#                     for reaction in reactions:
-#                         w.write(f"{rheaid}\t{reaction}\n")
-#                         # count_products += 1
-#         # print(count)
-#         # print(count_products)
-#
-# undefined_reactant_smiles = ['CC(O)CO', 'CCC(O)CO', 'NCC(O)CO']
-#
-# enumerate_one_compound(undefined_reactant_smiles[0])
+        if self.star_smarts_only==True:
+            substrates=substrates+self.defined_cofactor_smarts[rheaid][0]
+            products=products+self.defined_cofactor_smarts[rheaid][1]
+        return '.'.join(substrates)+'>>'+'.'.join(products)
+    
+    def check_balance(self, smiles):
+        """
+        Use check_reaction_balance function from
+        :param smiles:
+        :return:
+        """
+        return self.rxnclass.check_reaction_balance(smiles, account_H=self.account_H_in_balance)
+    
+    def group_predicted_reactions_based_on_rinchikey(self, df_predicted_reactions):
+        """
+        Careful - the direction of the reaction will be lost since RInChI is used (non-directional)
+        :param df_predicted_reactions: pandas.DataFrame of predicted reactions
+        :return: filtered df
+        """
+        df_predicted_reactions = self.rdb.add_rinchikey(df_predicted_reactions)
+        result = df_predicted_reactions.groupby('Web-RInChIKey').agg({
+            'rheaid': lambda x: ', '.join(x),
+            'rxnsmiles': 'first'
+        }).reset_index()
+        return result
+        
+        

@@ -23,20 +23,20 @@ class ReactionSmartsConverter():
 		new reactions.
 		
 		"""
-		self.RDBv_loc = rhea_db.RDBv_loc
+		self.rhea_db_version_location = rhea_db.rhea_db_version_location
 		self.rxn_mapper = AtomMapper()
 		self.df_smiles = rhea_db.df_smiles_master_id.copy()
 		
-	def convert_all_rhea_smiles_to_smarts(self):
+	def convert_all_rhea_smiles_to_smarts(self, debug=False):
 		"""
 		Main function of the class:
 		Converts SMILES to SMARTS and outputs the result into the text files
 		:return: output into text files
 		"""
-		self.generate_rhea_smarts_for_all_generic_reactions()
+		self.generate_rhea_smarts_for_all_generic_reactions(debug_mode=debug)
 		self.write_smarts_files()
 	
-	def generate_rhea_smarts_for_all_generic_reactions(self):
+	def generate_rhea_smarts_for_all_generic_reactions(self, debug_mode=False):
 		"""
 		Add SMARTS column to the copy of the pandas DataFrame with SMILES and Rhea MASTER_ID
 		:param df_smiles: pandas df with MASTER_ID (rhea id no direction) and rxn (reaction smiles) columns
@@ -51,17 +51,23 @@ class ReactionSmartsConverter():
 			~self.df_smiles['star_count'].isin([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 39, 41])]
 		
 		print('Converting reaction SMILES into SMARTS')
-		self.df_smiles['SMARTS'] = self.df_smiles.progress_apply(self.generate_smarts, axis=1)
+		self.df_smiles['SMARTS'] = self.df_smiles.progress_apply(self.generate_smarts, axis=1, debug_mode=debug_mode)
 		
 	def write_smarts_files(self):
 		"""
 		:param df_smiles: pandas DataFrame with SMARTS generated for each possible Rhea reaction
 		:return: outputs files (I/O function)
 		"""
-		smarts_directory = os.path.join(self.RDBv_loc, 'smarts')
+		smarts_directory = os.path.join(self.rhea_db_version_location, 'smarts')
 		os.makedirs(smarts_directory, exist_ok=True)
+		
+		# Remove unbalanced reactions
+		self.df_smiles=self.df_smiles[self.df_smiles['SMARTS']!='unbalanced reaction']
+		# Remove macromolecular reactions and pathway-reactions (lumped reactions)
+		self.df_smiles=self.df_smiles[self.df_smiles['SMARTS']!='macromolecular reaction']
+		
 		self.df_smiles.to_csv(os.path.join(smarts_directory, 'rheaSmarts.tsv'), sep='\t', index=False,
-						 columns=['MASTER_ID', 'rheaid', 'template_type', 'chebi_equation', 'SMARTS', 'rxnsmiles'])
+						 columns=['MASTER_ID', 'rheaid', 'chebi_equation', 'SMARTS', 'rxnsmiles'])
 		rhea_smarts_file = os.path.join(smarts_directory, 'rheaSmarts.json')
 		rhea_smarts = dict(zip(self.df_smiles['MASTER_ID'], self.df_smiles['SMARTS']))
 		
@@ -74,8 +80,8 @@ class ReactionSmartsConverter():
 			products.remove('*')
 	
 	def clean_rxn_smiles_of_redox(self, row):
-		substrates = row['rxn'].split('>>')[0].split('.')
-		products = row['rxn'].split('>>')[1].split('.')
+		substrates = row['rxnsmiles'].split('>>')[0].split('.')
+		products = row['rxnsmiles'].split('>>')[1].split('.')
 		self.remove_molecules(substrates, products, '[H]*[H]', min(substrates.count('[H]*[H]'), products.count('*')))
 		self.remove_molecules(products, substrates, '[H]*[H]', min(products.count('[H]*[H]'), substrates.count('*')))
 		return '.'.join(substrates) + '>>' + '.'.join(products)
@@ -128,7 +134,7 @@ class ReactionSmartsConverter():
 		products = [p for p in input_string.split('>>')[1].split('.') if p]
 		return '.'.join(reactants) + '>>' + '.'.join(products)
 	
-	def generate_smarts(self, row):
+	def generate_smarts(self, row, debug_mode=False):
 		"""
 		:param row: Row of dataframe of rhea reaction smiles
 		:return: SMARTS of Rhea reaction with Atom Mapping numbers that can be in the next step converted to rdkit reactions
@@ -149,22 +155,34 @@ class ReactionSmartsConverter():
 		
 		reaction = Reaction()
 		
-		balance = reaction.check_reaction_balance(row['rxn'])
+		balance = reaction.check_reaction_balance(row['rxnsmiles'], format='smiles', account_H=False, debug_mode=debug_mode)
 		if not balance:
 			return 'unbalanced reaction'
 		
-		rxn_smiles = self.remove_A_AH_pattern(row['rxn'])
+		rxn_smiles = self.remove_A_AH_pattern(row['rxnsmiles'])
 		
-		if len(row['rxn']) > 512:
-			return 'reaction too big for the atom mapper', None
+		# Exclude reactions that are not likely to be sensible patterns -
+		# star in those reactions likely defines a protein or other macromolecule - not small molecule part
+		# Besides, such reactions cannot be processed with atom mapper
+		if len(row['rxnsmiles']) > 512:
+			return 'macromolecular reaction'
 		
 		#if '*' in row['rxn'] and row['MASTER_ID'] not in (63388):
 		
 		# Rhea reaction 63388 : A +  Fe(II)-heme o + H2O = AH2 + Fe(II)-heme a is not processable using RXNmapper
 		# A - AH2 - too generic, Fe(II)-heme o - too big molecule
 		
-		rxns = [self.modify_rxn_smiles(row['rxn'])]
-		atommap_results = self.rxn_mapper.map_many_reactions(rxns)
+		rxn = self.modify_rxn_smiles(rxn_smiles)
+		if debug_mode==True:
+			try:
+				atommap_results = self.rxn_mapper.map_one_reaction(rxn)
+			except Exception as e:
+				print(rxn)
+				print(e)
+				return 'Could not map reaction'
+		else:
+			atommap_results = self.rxn_mapper.map_one_reaction(rxn)
+			
 		smarts = atommap_results['mapped_rxn']
 		smarts = self.remove_pattern(smarts)
 		smarts = self.remove_free_hydrogen_pattern(smarts)
@@ -174,12 +192,13 @@ class ReactionSmartsConverter():
 	def modify_rxn_smiles(self, rxn_smiles):
 		"""
 		Modifies the reaction SMILES to replace placeholders with isotopically labelled carbon.
-		This is necessary to be able to handle reaction SMILES with RXNMapper
+		This is necessary to be able to handle reaction SMILES with RXNMapper.
+		The order of replacements is important! '*': '[13C]' should be the last.
 		:param rxn_smiles: The reaction SMILES string
 		:return: Modified SMILES string
 		"""
 		replacements = {
-			'[1*]': '[13C]', '[2*]': '[13C]', '[3*]': '[13C]', '[4*]': '[13C]', '[5*]': '[13C]',
+			'[1*:0]': '[13C]', '[1*]': '[13C]', '[2*]': '[13C]', '[3*]': '[13C]', '[4*]': '[13C]', '[5*]': '[13C]',
 			'[6*]': '[13C]', '[7*]': '[13C]', '[8*]': '[13C]', '[9*]': '[13C]', '[*-]': '[13C-]',
 			'[*:0]': '[13C]', '*': '[13C]'
 		}

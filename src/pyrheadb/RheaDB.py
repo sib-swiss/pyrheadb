@@ -14,6 +14,7 @@ from rdkit import Chem
 from rdkit.Chem.rdChemReactions import PreprocessReaction
 
 from .Reaction import Reaction
+from .RInChI import RInChI
 
 ################## DATA #####################
 
@@ -492,3 +493,15 @@ class RheaDB:
         print('10.')
         print("self.rhea_reaction_long_format_smiles_chebi")
         print(self.rhea_reaction_long_format_smiles_chebi.shape)
+        
+    def add_rinchikey(self, df_rxnsmiles):
+        """
+        add_rinchikey_column
+        :param df_rxnsmiles: pandas dataframe with rxnsmiles columns
+        :return: dataframe with RInChI column added
+        """
+        rinchiobj = RInChI()
+        print('Calculating Reaction InChiKeys')
+        df_rxnsmiles['Web-RInChIKey'] = \
+            df_rxnsmiles['rxnsmiles'].progress_apply(rinchiobj.error_handle_wrap_webrinchikey_only)
+        return df_rxnsmiles

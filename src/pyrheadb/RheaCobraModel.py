@@ -6,13 +6,8 @@ from cobra import Model, Reaction, Metabolite
 from rdkit.Chem import rdMolDescriptors
 from rdkit.Chem import MolFromSmiles
 
-from .RheaDB import RheaDB
-from .RInChI import RInChI
-
 from tqdm import tqdm
 tqdm.pandas()
-
-rinchiobj = RInChI()
 
 class RheaCobraModel():
 	
@@ -65,9 +60,8 @@ class RheaCobraModel():
 		filename_df_smiles_chebi_equation_webrinchikeys = os.path.join(filepath, 'cache',
 															   f'{self.model_name}_webrinchikey.tsv')
 		if not os.path.exists(filename_df_smiles_chebi_equation_webrinchikeys):
-			print('Calculating Reaction InChiKeys')
-			self.df_smiles_chebi_equation_master_id['Web-RInChIKey'] = \
-				self.df_smiles_chebi_equation_master_id['rxnsmiles'].progress_apply(rinchiobj.error_handle_wrap_webrinchikey_only)
+			# Calculating Reaction InChiKeys
+			self.df_smiles_chebi_equation_master_id=self.rdb.add_rinchikey(self.df_smiles_chebi_equation_master_id)
 			len_before = len(self.df_smiles_chebi_equation_master_id)
 			print('Total number of reactions in the rhea reactions set:', len_before)
 			self.df_smiles_chebi_equation_master_id.dropna(subset=['Web-RInChIKey'], inplace=True)
