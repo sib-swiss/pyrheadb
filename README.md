@@ -8,8 +8,6 @@ Check [Wiki](https://github.com/sib-swiss/pyrheadb/wiki) for info about installa
 
 Folder description
 ==================
-## bin (executables)
-rinchi_lib : RInChI binary downloaded from [InChI Trust](https://www.inchi-trust.org/downloads/)
 
 ## examples
 [Jupyter notebooks](examples) containing Rhea analysis using the pyrheadb examples.
