@@ -131,5 +131,74 @@ class Reaction:
 			result_dict[key] = result_dict.get(key, 0) + value
 		
 		return result_dict
+	
+	def clean_rxnsmiles_of_redox(self, rxnsmiles):
+		substrates = rxnsmiles.split('>>')[0].split('.')
+		products = rxnsmiles.split('>>')[1].split('.')
+		self.remove_molecules(substrates, products, '[H]*[H]', min(substrates.count('[H]*[H]'), products.count('*')))
+		self.remove_molecules(products, substrates, '[H]*[H]', min(products.count('[H]*[H]'), substrates.count('*')))
+		return '.'.join(substrates) + '>>' + '.'.join(products)
+	
+	def remove_molecules(self, substrates, products, molecule, count):
+		for _ in range(count):
+			substrates.remove(molecule)
+			products.remove('*')
+	
+	def remove_A_AH_pattern(self, rxnsmiles):
+		
+		oxidant_replacement = {
+			r"\.\*\.": '.',
+			r"^\*\.": '',
+			r">>\*\.": '>>',
+			r"\.\*>>": '>>',
+			r"\.\*$": '',
+		}
+		# Oxidant patterns
+		for pattern, replacement in oxidant_replacement.items():
+			found_pattern = re.findall(pattern, rxnsmiles)
+			if found_pattern:
+				for pattern in found_pattern:
+					rxnsmiles = rxnsmiles.replace(pattern, replacement)
+		
+		# Reducing patterns
+		
+		reducing_replacement = {
+			r"\.\[H\]\*\[H\]\.": '.',
+			r"^\[H\]\*\[H\]\.": '',
+			r">>\[H\]\*\[H\]\.": '>>',
+			r"\.\[H\]\*\[H\]>>": '>>',
+			r"\.\[H\]\*\[H\]$": ''
+		}
+		for pattern, replacement in reducing_replacement.items():
+			found_pattern = re.findall(pattern, rxnsmiles)
+			if found_pattern:
+				for pattern in found_pattern:
+					rxnsmiles = rxnsmiles.replace(pattern, replacement)
+		
+		rxnsmiles = self.remove_extra_dots_smiles(rxnsmiles)
+		return rxnsmiles
+	
+	def remove_extra_dots_smiles(self, rxnsmiles):
+		reactants = [r for r in rxnsmiles.split('>>')[0].split('.') if r]
+		products = [p for p in rxnsmiles.split('>>')[1].split('.') if p]
+		return '.'.join(reactants) + '>>' + '.'.join(products)
+	
+
+	def star_to_isotopic_label(self, rxn_smiles):
+		"""
+		Modifies the reaction SMILES to replace placeholders with isotopically labelled carbon.
+		This is necessary to be able to handle reaction SMILES with RXNMapper.
+		The order of replacements is important! '*': '[13C]' should be the last.
+		:param rxn_smiles: The reaction SMILES string
+		:return: Modified SMILES string
+		"""
+		replacements = {
+			'[1*:0]': '[13C]', '[1*]': '[13C]', '[2*]': '[13C]', '[3*]': '[13C]', '[4*]': '[13C]', '[5*]': '[13C]',
+			'[6*]': '[13C]', '[7*]': '[13C]', '[8*]': '[13C]', '[9*]': '[13C]', '[*-]': '[13C-]',
+			'[*:0]': '[13C]', '*': '[13C]'
+		}
+		for old, new in replacements.items():
+			rxn_smiles = rxn_smiles.replace(old, new)
+		return rxn_smiles
 
 

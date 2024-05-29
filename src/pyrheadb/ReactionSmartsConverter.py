@@ -25,6 +25,7 @@ class ReactionSmartsConverter():
 		"""
 		self.rhea_db_version_location = rhea_db.rhea_db_version_location
 		self.rxn_mapper = AtomMapper()
+		self.reactionobj = Reaction()
 		self.df_smiles = rhea_db.df_smiles_master_id.copy()
 		
 	def convert_all_rhea_smiles_to_smarts(self, debug=False):
@@ -65,6 +66,8 @@ class ReactionSmartsConverter():
 		self.df_smiles=self.df_smiles[self.df_smiles['SMARTS']!='unbalanced reaction']
 		# Remove macromolecular reactions and pathway-reactions (lumped reactions)
 		self.df_smiles=self.df_smiles[self.df_smiles['SMARTS']!='macromolecular reaction']
+		# Remove not pattern reactions - reactions in which A / AH were the only compound with star
+		self.df_smiles=self.df_smiles[self.df_smiles['SMARTS']!='Not pattern after removing A / AH']
 		
 		self.df_smiles.to_csv(os.path.join(smarts_directory, 'rheaSmarts.tsv'), sep='\t', index=False,
 						 columns=['MASTER_ID', 'rheaid', 'chebi_equation', 'SMARTS', 'rxnsmiles'])
@@ -74,146 +77,60 @@ class ReactionSmartsConverter():
 		with open(rhea_smarts_file, "w") as file:
 			json.dump(rhea_smarts, file)
 	
-	def remove_molecules(self, substrates, products, molecule, count):
-		for _ in range(count):
-			substrates.remove(molecule)
-			products.remove('*')
-	
 	def clean_rxn_smiles_of_redox(self, row):
-		substrates = row['rxnsmiles'].split('>>')[0].split('.')
-		products = row['rxnsmiles'].split('>>')[1].split('.')
-		self.remove_molecules(substrates, products, '[H]*[H]', min(substrates.count('[H]*[H]'), products.count('*')))
-		self.remove_molecules(products, substrates, '[H]*[H]', min(products.count('[H]*[H]'), substrates.count('*')))
-		return '.'.join(substrates) + '>>' + '.'.join(products)
-	
-	def remove_free_hydrogen_pattern(self, input_string):
+		rxnsmiles=row['rxnsmiles']
+		return self.reactionobj.clean_rxnsmiles_of_redox(rxnsmiles)
+		
+
+	def remove_free_hydrogen_pattern(self, smarts):
 		# Define the regular expression pattern to match "[F:*]"
 		pattern = r"\.\[H\+:\d{1,3}\]$"
 		
 		# Use the re.sub() function to replace the pattern with an empty string
-		result_string = re.sub(pattern, "", input_string)
-		result_string = result_string.replace('.[H+]', '')
-		return result_string
-	
-	def remove_A_AH_pattern(self, result_string):
-		
-		oxidant_replacement = {
-			r"\.\*\.": '.',
-			r"^\*\.": '',
-			r">>\*\.": '>>',
-			r"\.\*>>": '>>',
-			r"\.\*$": '',
-		}
-		# Oxidant patterns
-		for pattern, replacement in oxidant_replacement.items():
-			found_pattern = re.findall(pattern, result_string)
-			if found_pattern:
-				for pattern in found_pattern:
-					result_string = result_string.replace(pattern, replacement)
-		
-		# Reducing patterns
-		
-		reducing_replacement = {
-			r"\.\[H\]\*\[H\]\.": '.',
-			r"^\[H\]\*\[H\]\.": '',
-			r">>\[H\]\*\[H\]\.": '>>',
-			r"\.\[H\]\*\[H\]>>": '>>',
-			r"\.\[H\]\*\[H\]$": ''
-		}
-		for pattern, replacement in reducing_replacement.items():
-			found_pattern = re.findall(pattern, result_string)
-			if found_pattern:
-				for pattern in found_pattern:
-					result_string = result_string.replace(pattern, replacement)
-		
-		result_string = self.remove_extra_dots_smiles(result_string)
-		return result_string
-	
-	def remove_extra_dots_smiles(self, input_string):
-		reactants = [r for r in input_string.split('>>')[0].split('.') if r]
-		products = [p for p in input_string.split('>>')[1].split('.') if p]
-		return '.'.join(reactants) + '>>' + '.'.join(products)
+		smarts = re.sub(pattern, "", smarts)
+		smarts = smarts.replace('.[H+]', '')
+		return smarts
 	
 	def generate_smarts(self, row, debug_mode=False):
 		"""
 		:param row: Row of dataframe of rhea reaction smiles
 		:return: SMARTS of Rhea reaction with Atom Mapping numbers that can be in the next step converted to rdkit reactions
 		"""
-		# Logic from another impementation of this
-		# substrates = row['rxn_clean_redox'].split('>>')[0].split('.')
-		# products = row['rxn_clean_redox'].split('>>')[1].split('.')
-		# substrates = '.'.join([i for i in substrates if '*' in i])
-		# products = '.'.join([i for i in products if '*' in i])
-		#
-		# rxns = [substrates + '>>' + products]
-		#
-		# if len(rxns[0]) < 512:
-		#
-		# 	if not all(['*' in i for i in row['rxn'].split('>>')]):
-		# 		# print('unbalanced R', row['MASTER_ID'])
-		# 		return 'unbalanced R'
 		
-		reaction = Reaction()
+		balance = self.reactionobj.check_reaction_balance(row['rxnsmiles'], format='smiles', account_H=False, debug_mode=debug_mode)
 		
-		balance = reaction.check_reaction_balance(row['rxnsmiles'], format='smiles', account_H=False, debug_mode=debug_mode)
 		if not balance:
 			return 'unbalanced reaction'
 		
-		rxn_smiles = self.remove_A_AH_pattern(row['rxnsmiles'])
+		rxn_smiles = self.reactionobj.remove_A_AH_pattern(row['rxnsmiles'])
+		
+		if not '*' in rxn_smiles:
+			return 'Not pattern after removing A / AH'
+		
+		rxn_smiles = self.reactionobj.star_to_isotopic_label(rxn_smiles)
+		
+		atommap_results = self.rxn_mapper.map_one_reaction(rxn_smiles)
 		
 		# Exclude reactions that are not likely to be sensible patterns -
 		# star in those reactions likely defines a protein or other macromolecule - not small molecule part
 		# Besides, such reactions cannot be processed with atom mapper
-		if len(row['rxnsmiles']) > 512:
+		if atommap_results['mapped_rxn'] == 'tokenlength_error':
 			return 'macromolecular reaction'
 		
-		#if '*' in row['rxn'] and row['MASTER_ID'] not in (63388):
-		
-		# Rhea reaction 63388 : A +  Fe(II)-heme o + H2O = AH2 + Fe(II)-heme a is not processable using RXNmapper
-		# A - AH2 - too generic, Fe(II)-heme o - too big molecule
-		
-		rxn = self.modify_rxn_smiles(rxn_smiles)
-		if debug_mode==True:
-			try:
-				atommap_results = self.rxn_mapper.map_one_reaction(rxn)
-			except Exception as e:
-				print(rxn)
-				print(e)
-				return 'Could not map reaction'
-		else:
-			atommap_results = self.rxn_mapper.map_one_reaction(rxn)
-			
 		smarts = atommap_results['mapped_rxn']
-		smarts = self.remove_pattern(smarts)
+		smarts = self.isotope_to_star_pattern(smarts)
 		smarts = self.remove_free_hydrogen_pattern(smarts)
 		return smarts
 
 	
-	def modify_rxn_smiles(self, rxn_smiles):
-		"""
-		Modifies the reaction SMILES to replace placeholders with isotopically labelled carbon.
-		This is necessary to be able to handle reaction SMILES with RXNMapper.
-		The order of replacements is important! '*': '[13C]' should be the last.
-		:param rxn_smiles: The reaction SMILES string
-		:return: Modified SMILES string
-		"""
-		replacements = {
-			'[1*:0]': '[13C]', '[1*]': '[13C]', '[2*]': '[13C]', '[3*]': '[13C]', '[4*]': '[13C]', '[5*]': '[13C]',
-			'[6*]': '[13C]', '[7*]': '[13C]', '[8*]': '[13C]', '[9*]': '[13C]', '[*-]': '[13C-]',
-			'[*:0]': '[13C]', '*': '[13C]'
-		}
-		for old, new in replacements.items():
-			rxn_smiles = rxn_smiles.replace(old, new)
-		return rxn_smiles
-	
-	def remove_pattern(self, input_string):
+	def isotope_to_star_pattern(self, input_string):
 		"""
 		Remove the pattern that was previously introduced to overcome inability of RXNmapper to handle dummy atoms (*)
 		:param input_string: SMARTS string
 		:return:
 		"""
-		result_string = input_string.replace('13C', '*')
-		return result_string
+		rxnsmiles = input_string.replace('13C', '*')
+		return rxnsmiles
 	
 	def smarts_to_smiles(self, rxn_smarts):
 
