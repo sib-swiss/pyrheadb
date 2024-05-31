@@ -12,16 +12,16 @@ class Visualization():
         Initializes the Visualization instance with an optional image folder path.
         :param image_folder: Optional. Folder where the generated images will be stored. Default is None.
         """
-        self.image_folder = image_folder if image_folder else "default_image_folder"
-        os.makedirs(self.image_folder, exist_ok=True)
-		
+        self.set_image_output_folder(image_folder)
+        
     def set_image_output_folder(self, image_folder):
         """
         :param image_folder: folder where the generated images are going to be stored
         :return:
         """
-        self.image_folder = image_folder
+        self.image_folder =  image_folder if image_folder else "default_image_folder"
         os.makedirs(self.image_folder, exist_ok=True)
+        
 
     def draw_reaction_smarts(self, rxn_smarts, rxn_name, bw=False):
         """

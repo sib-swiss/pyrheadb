@@ -26,7 +26,6 @@ class AtomTransitionNetwork():
 		self.filter_rhea_data()
 		self.calculate_dict_rheaid_comp_id()
 		
-	
 	def filter_rhea_data(self):
 		"""
 		Atom transition network works based on the fully defined compounds.
@@ -40,19 +39,31 @@ class AtomTransitionNetwork():
 		self.reactiondata['balance']=self.reactiondata['rxnsmiles'].progress_apply(self.reactionobj.check_reaction_balance, format='smiles', account_H=False)
 		# drop unbalanced reactions
 		self.reactiondata=self.reactiondata[self.reactiondata['balance']==True]
+		# drop reactions with star compounds
+		self.reactiondata['rxnsmilesnoredox']=self.reactiondata['rxnsmiles'].progress_apply(self.reactionobj.clean_rxnsmiles_of_redox)
+		self.reactiondata.drop(columns=['rxnsmiles'], inplace=True)
+		self.reactiondata.rename(columns={'rxnsmilesnoredox':'rxnsmiles'}, inplace=True)
+		self.reactiondata['star_no_redox'] = self.reactiondata['rxnsmiles'].apply(lambda x: "*" in x)
+		self.reactiondata = self.reactiondata[self.reactiondata['star_no_redox'] == False]
+		# drop reactions with polymers
+		self.reactiondata['polymer_reaction'] = self.reactiondata['chebi_equation'].apply(lambda x: 'POLYMER' in x)
+		self.reactiondata = self.reactiondata[self.reactiondata['polymer_reaction '] == False]
+		
 	def get_dict_compid_to_smiles(self):
 		"""
 		OBSOLETE GET DIRECTLY FROM RHEA DATA
 		:param df_rhea_rheactions_smiles_chebi:
 		:return:
 		"""
-		dict_compid_to_smiles = dict()
-		for index, row in self.reactiondata.iterrows():
-			smiles = row['rxnsmiles'].replace('>>', '.').split('.')
-			chebi_equation = row['chebi_equation'].replace('>>', '.').split('.')
-			assert len(smiles) == len(chebi_equation)
-			for i in range(len(smiles)):
-				dict_compid_to_smiles[chebi_equation[i]] = smiles[i]
+		chebiids = self.rheadata.df_chebi_smiles['chebiid'].to_list()
+		smiles = self.rheadata.df_chebi_smiles['smiles'].to_list()
+		dict_compid_to_smiles = dict(zip(chebiids, smiles))
+		# for index, row in self.reactiondata.iterrows():
+		# 	smiles = row['rxnsmiles'].replace('>>', '.').split('.')
+		# 	chebi_equation = row['chebi_equation'].replace('>>', '.').split('.')
+		# 	assert len(smiles) == len(chebi_equation)
+		# 	for i in range(len(smiles)):
+		# 		dict_compid_to_smiles[chebi_equation[i]] = smiles[i]
 		
 		self.test_all_compounds_can_be_molobj(dict_compid_to_smiles)
 		
@@ -307,6 +318,8 @@ class AtomTransitionNetwork():
 		# Save as pickle
 		df.to_pickle(
 			os.path.join(self.rheadata.rhea_db_version_location, 'atom_transition_network', 'rheadf_atom_mapped_with_edges.pkl'))
+		
+		self.load_networkx_graph()
 	
 	# edges_reaction = match_compound_atoms(comp_id_match_mapped_reaction, equation_mapped, dict_compid_to_numbered_smiles)
 	
@@ -324,11 +337,11 @@ class AtomTransitionNetwork():
 		df = df[df['mapped_rxn'] != 'tokenlength_error']
 		
 		df.to_csv(atom_mapped_df_file, sep='\t', index=False)
-		
-	def analyze_atom_mapped_graph(self):
-		
+	
+	def load_networkx_graph(self):
 		df = pd.read_pickle(
-			os.path.join(self.rheadata.rhea_db_version_location, 'atom_transition_network', 'rheadf_atom_mapped_with_edges.pkl'))
+			os.path.join(self.rheadata.rhea_db_version_location, 'atom_transition_network',
+						 'rheadf_atom_mapped_with_edges.pkl'))
 		
 		list_edges = []
 		
@@ -336,12 +349,19 @@ class AtomTransitionNetwork():
 			if type(edges) == list:
 				list_edges.extend(edges)
 		
-		G = nx.from_edgelist(list_edges)
+		self.G = nx.from_edgelist(list_edges)
 		
-		print('Number of subgraphs:', nx.number_connected_components(G))
+	def plot_subgraph_size_vs_count(self, plotid='default'):
+		"""
+		This function saves the plot of disconnected subgraph sizes (number of compound-atoms included) vs
+		number of subgraphs of this size
+		:return:
+		"""
+		
+		print('Number of subgraphs:', nx.number_connected_components(self.G))
 		
 		sizes = []
-		for comp in nx.connected_components(G):
+		for comp in nx.connected_components(self.G):
 			sizes.append(len(comp))
 		print('Number of compound-assigned atoms in the biggest subgraph:', max(sizes))
 		
@@ -350,18 +370,70 @@ class AtomTransitionNetwork():
 		
 		print('Atoms disconnected from biggest subnetwork:', sum(len_comp_small) + sum(len_comp_medium))
 		
-		sizes = [i for i in sizes if i!=max(sizes)] # Remove the biggest subnetwork since it has completely different scale to the rest
-		plt.hist(sizes)
-		plt.xlabel('number of pairs in the graph component')
-		plt.ylabel('number of components')
-		plt.show()
+		# Define custom bins
+		bins = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+				17, 18, 19, 20, 50, 100, max(sizes)]
+		bin_labels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
+					  '13', '14', '15', '16', '17', '18', '19', '20-49', '50-99',
+					  f'100-{max(sizes)}']
 		
-		print('Plot only number of subnetwork with less than 21 atoms')
-		sizes = [i for i in sizes if i < 21]
-		sizes.sort(reverse=True)
+		# Count the sizes in each bin range
+		counts = [0] * (len(bins) - 1)
+		for size in sizes:
+			for i in range(len(bins) - 1):
+				if bins[i] <= size < bins[i + 1]:
+					counts[i] += 1
+					break
 		
-		plt.hist(sizes)
-		plt.xlabel('number of pairs in the graph component')
-		plt.ylabel('number of components')
-		plt.show()
+		# Add the count for the max bin
+		counts[-1] += sizes.count(max(sizes))
+		
+		# Plotting the bar chart with custom bins
+		fig, ax = plt.subplots(figsize=(12, 8))
+		ax.bar(range(len(counts)), counts, tick_label=bin_labels, edgecolor='black', color='black')
+		
+		# Customizing ticks and labels
+		ax.tick_params(axis='x', rotation=45, labelsize=15)
+		ax.tick_params(axis='y', labelsize=15)
+		
+		ax.set_yscale('log')
+		
+		ax.set_xlabel('Number of compound-atoms (e.g. CHEBI:57681-C:2) in subgraph', fontsize=20)
+		ax.set_ylabel('Number of subgraphs', fontsize=20)
+		ax.set_title('Connectivity of the atom transition network', fontsize=30)
+		
+		ax.grid(axis='y', linestyle='--', alpha=0.7)
+		fig.tight_layout()
+		
+		os.makedirs('plots', exist_ok=True)
+		plt.savefig(os.path.join('plots', f'atom_transition_network_subgraphs_size_vs_count_{plotid}.png'))
+		
+		plt.close()
 
+
+# import igraph as ig
+# from itertools import product
+# reactions_file = 'reactions_enumeration.tsv'
+# import matplotlib.pyplot as plt
+#
+# def produce_graph(reactions_file):
+# 	with open(reactions_file) as f, open('graph.ncol', 'w') as g:
+# 		header = f.readline().split('\t')
+# 		equ_index = header.index('stoichiometric_equation')
+# 		for line in f:
+# 			eq = line.split('\t')[equ_index]
+# 			reacts = [i.split()[1] for i in eq.split(' <=> ')[0].split(' + ')]
+# 			reacts = [i for i in reacts if i.startswith('SLM:')]
+# 			products = [i.split()[1] for i in eq.split(' <=> ')[1].split(' + ')]
+# 			products = [i for i in products if i.startswith('SLM:')]
+# 			for combination in product(reacts, products):
+# 				g.write(f'{combination[0]} {combination[1]}\n')
+#
+# #produce_graph(reactions_file)
+# g = ig.Graph.Read_Ncol('graph.ncol')
+# sum = 0
+# comp_sizes=[]
+# for component in g.components():
+# 	sum+=len(component)
+# 	comp_sizes.append(len(component))
+# print(sum)
