@@ -47,7 +47,7 @@ class AtomTransitionNetwork():
 		self.reactiondata = self.reactiondata[self.reactiondata['star_no_redox'] == False]
 		# drop reactions with polymers
 		self.reactiondata['polymer_reaction'] = self.reactiondata['chebi_equation'].apply(lambda x: 'POLYMER' in x)
-		self.reactiondata = self.reactiondata[self.reactiondata['polymer_reaction '] == False]
+		self.reactiondata = self.reactiondata[self.reactiondata['polymer_reaction'] == False]
 		
 	def get_dict_compid_to_smiles(self):
 		"""

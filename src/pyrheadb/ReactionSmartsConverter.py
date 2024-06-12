@@ -53,6 +53,7 @@ class ReactionSmartsConverter():
 		
 		print('Converting reaction SMILES into SMARTS')
 		self.df_smiles['SMARTS'] = self.df_smiles.progress_apply(self.generate_smarts, axis=1, debug_mode=debug_mode)
+		self.df_smiles = self.df_smiles[self.df_smiles['SMARTS']!=None]
 		
 	def write_smarts_files(self):
 		"""
@@ -114,23 +115,25 @@ class ReactionSmartsConverter():
 		# Exclude reactions that are not likely to be sensible patterns -
 		# star in those reactions likely defines a protein or other macromolecule - not small molecule part
 		# Besides, such reactions cannot be processed with atom mapper
-		if atommap_results['mapped_rxn'] == 'tokenlength_error':
+		if atommap_results[0] == 'tokenlength_error':
 			return 'macromolecular reaction'
 		
-		smarts = atommap_results['mapped_rxn']
+		smarts = atommap_results[0]
+		if type(smarts)!=str:
+			print(atommap_results)
+			return None
 		smarts = self.isotope_to_star_pattern(smarts)
 		smarts = self.remove_free_hydrogen_pattern(smarts)
 		return smarts
 
 	
-	def isotope_to_star_pattern(self, input_string):
+	def isotope_to_star_pattern(self, rxnsmiles):
 		"""
 		Remove the pattern that was previously introduced to overcome inability of RXNmapper to handle dummy atoms (*)
 		:param input_string: SMARTS string
 		:return:
 		"""
-		rxnsmiles = input_string.replace('13C', '*')
-		return rxnsmiles
+		return rxnsmiles.replace('13C', '*')
 	
 	def smarts_to_smiles(self, rxn_smarts):
 

@@ -157,7 +157,12 @@ class RheaCobraModel():
 		compartment='c')
 		"""
 		# Lookup metabolite name from CHEBI ID to the name
-		metabolite_name = self.rdb.df_chebi_cmpname[self.rdb.df_chebi_cmpname['chebiid']==metabolite_id]['cmpname'].iloc[0]
+		metabolite_name_df = self.rdb.df_chebi_cmpname[self.rdb.df_chebi_cmpname['chebiid']==metabolite_id]['cmpname']
+		if len(metabolite_name_df)>0:
+			metabolite_name = metabolite_name_df.iloc[0]
+		else:
+			print('No name found for metabolite, report the case:', metabolite_id)
+			metabolite_name = 'noname'
 		if not metabolite_SMILES:
 			metabolite_SMILES = self.rdb.df_chebi_smiles[self.rdb.df_chebi_smiles['chebiid']==metabolite_id]['smiles'].iloc[0]
 		calculated_formula = rdMolDescriptors.CalcMolFormula(MolFromSmiles(metabolite_SMILES))
