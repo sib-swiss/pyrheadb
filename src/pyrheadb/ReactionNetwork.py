@@ -80,7 +80,6 @@ class ReactionNetwork():
 		Compute various centrality measures to find the most influential nodes (compounds) in your network.
 		Measures like degree centrality, betweenness centrality, and closeness centrality can be useful.
 		"""
-		import networkx as nx
 		centrality = {
 			'Degree Centrality': nx.degree_centrality(self.participants_graph),
 			'Betweenness Centrality': nx.betweenness_centrality(self.participants_graph),
