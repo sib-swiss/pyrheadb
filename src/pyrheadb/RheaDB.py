@@ -68,9 +68,6 @@ class RheaDB:
             if versions:
                 return (max(versions))
             
-            
-            
-        
     def __get_current_rhea_version(self):
         """
         Get current version of the Rhea DB

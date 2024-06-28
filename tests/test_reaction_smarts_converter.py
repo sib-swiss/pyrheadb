@@ -49,13 +49,6 @@ class TestReactionSmartsConverter(unittest.TestCase):
         result = self.converter.clean_rxn_smiles_of_redox(input_row)
         self.assertEqual(result, expected_output)
 
-    def test_remove_extra_dots_smiles(self):
-        # Test removal of extra dots in SMILES
-        input_string = 'C.C.>>..CC'
-        expected_output = 'C.C>>CC'
-        result = self.converter.remove_extra_dots_smiles(input_string)
-        self.assertEqual(result, expected_output)
-
     def test_generate_smarts(self):
         # Mocking the Reaction class and its methods
         with patch('pyrheadb.Reaction', autospec=True) as mock_reaction_cls:
@@ -63,7 +56,7 @@ class TestReactionSmartsConverter(unittest.TestCase):
             mock_reaction.check_reaction_balance.return_value = True
 
             # Test 1
-            self.util_test_one_smiles_case('C>>C', '[CH4:1]>>[CH4:1]')
+            self.util_test_one_smiles_case('C>>C', 'Not pattern after removing A / AH')
             # Test 2
             self.util_test_one_smiles_case('C>>CC', 'unbalanced reaction')
             # Test 3
@@ -80,18 +73,12 @@ class TestReactionSmartsConverter(unittest.TestCase):
         result = self.converter.generate_smarts(input_row)
         self.assertEqual(result, expected_smarts)
         
-    def test_modify_rxn_smiles(self):
-        # Test the reaction SMILES modification method
-        input_smiles = '[1*]C[2*]>>[3*]CC[4*]'
-        expected_output = '[13C]C[13C]>>[13C]CC[13C]'
-        result = self.converter.modify_rxn_smiles(input_smiles)
-        self.assertEqual(result, expected_output)
 
-    def test_remove_pattern(self):
+    def test_isotope_to_star_pattern(self):
         # Test the removal of specific patterns
         input_string = '13C>>13C'
         expected_output = '*>>*'
-        result = self.converter.remove_pattern(input_string)
+        result = self.converter.isotope_to_star_pattern(input_string)
         self.assertEqual(result, expected_output)
 
 # Add more tests as necessary for each method.

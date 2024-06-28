@@ -56,5 +56,12 @@ class TestReaction(unittest.TestCase):
 		self.assertIsNotNone(rxn)
 		self.assertTrue(rxn.IsInitialized())
 
+	def test_star_to_isotopic_label(self):
+		# Test the reaction SMILES modification method
+		input_smiles = '[1*]C[2*]>>[3*]CC[4*]'
+		expected_output = '[13C]C[13C]>>[13C]CC[13C]'
+		result = self.reaction.star_to_isotopic_label(input_smiles)
+		self.assertEqual(result, expected_output)
+
 if __name__ == '__main__':
 	unittest.main()
