@@ -1,6 +1,6 @@
 [project]
 name = "pyrheadb"
-version = "0.0.17"
+version = "0.1.0"
 authors = [
   { name="Anastasia Sveshnikova", email="anastasia.sveshnikova@sib.swiss" },
 ]
@@ -12,8 +12,18 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["setuptools", "pandas", "rdkit", "requests_ftp", "networkx", "tqdm", "matplotlib",
-    "pathlib", "rxnmapper", "pillow", "cobra", "sparqlwrapper", "jupyterlab"]
+dependencies = [
+    "setuptools", "pandas", "rdkit", "requests_ftp",
+    "networkx", "tqdm", "matplotlib",
+    "pathlib", "rxnmapper", "pillow", "cobra", "sparqlwrapper", "jupyterlab"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest >=7.1.3",
+    "pytest-cov >=3.0.0",
+    "mypy >=1.4.1",
+]
 
 [project.urls]
 Homepage = "https://github.com/sib-swiss/pyrheadb"

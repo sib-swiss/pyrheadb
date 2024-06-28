@@ -5,8 +5,10 @@ setup.py
 rhea-release.properties
 
 # cache of example jupyter notebooks
-examples/cache/*
-
+#examples/cache/*
+examples_solved/*
+examples/*.tsv
+examples/plots/
 # in .gitignore for now
 Pipfile
 analytics/*
