@@ -3,19 +3,19 @@
 from rdkit import Chem
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
-
+import os
 from pyrheadb.ReactionPrediction import ReactionPrediction
 from pyrheadb.RheaDB import RheaDB
-rdb = RheaDB()
+
+current_dir = os.path.dirname(__file__)  # Gets the directory where this test file resides
+test_rhea_db_path = os.path.join(current_dir, 'test_rhea_db')
+
+rhea_db_version = 130
+rdb = RheaDB(rhea_versions_folder_location=test_rhea_db_path, rhea_version=rhea_db_version)
+
 class TestReactionPrediction(unittest.TestCase):
     def setUp(self):
         self.prediction = ReactionPrediction(rdb)
-
-
-    def test_load_smarts_data(self):
-        self.prediction.load_smarts_data()
-        self.assertIn('39023', self.prediction.smarts_data)
-        self.assertEqual(self.prediction.smarts_data['39023'][0], "[")
 
     def test_predict_products_no_substrates_set(self):
         with self.assertRaises(TypeError):

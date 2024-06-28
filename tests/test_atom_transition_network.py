@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 from pyrheadb.AtomTransitionNetwork import AtomTransitionNetwork
@@ -6,7 +7,9 @@ from rdkit import Chem
 
 class TestAtomTransitionNetwork(unittest.TestCase):
     def setUp(self):
-        rhea_db = RheaDB(rhea_versions_folder_location='/scratch/rheadata/', rhea_version=130)
+        current_dir = os.path.dirname(__file__)  # Gets the directory where this test file resides
+        test_rhea_db_path = os.path.join(current_dir, 'test_rhea_db')
+        rhea_db = RheaDB(rhea_versions_folder_location=test_rhea_db_path, rhea_version=130)
         self.atn = AtomTransitionNetwork(rheadata=rhea_db)
         self.smiles_test = 'CCCCC(N)=O.[H]O[H]>>CCCCC(=O)[O-].[H][N+]([H])([H])[H]'
         self.dict_smiles_to_compid = {

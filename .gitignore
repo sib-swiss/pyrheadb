@@ -17,9 +17,6 @@ docs/*
 src/pyrheadb/CompoundPairs.py
 # going to remove from git ignore once the logic developed for gangliosides is generalised
 src/pyrheadb/gangliosides/*
-# going to remove from git ignore once the test files of rheadb are shortened, not the whole v130 of rheadb, only one example
-tests/test_rhea_db.py
-tests/test_rhea_db/
 
 # cache of pyrheadb scripts running
 src/pyrheadb/cache/
