@@ -62,3 +62,11 @@ include-package-data = true
 
 #[tool.setuptools.package-data]
 #pyrheadb = ["pyrheadb/biochemical_assumptions", "pyrheadb/modeling_assumptions"]
+
+
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=src",
+    "--color=yes",
+    "--cov-report=term-missing",
+]
