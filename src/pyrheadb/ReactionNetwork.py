@@ -25,6 +25,8 @@ class ReactionNetwork():
 			with open(os.path.join(filepath, 'biochemical_assumptions', 'rhea_chebi_hub.tsv')) as f:
 				hub_compounds = ['CHEBI:'+i.strip() for i in f.readlines() if i]
 			df_non_hubs = pd.DataFrame(counts_chebiids[~counts_chebiids['chebiid'].isin(hub_compounds)]['chebiid'])
+		elif hub_compounds_from == 'all_compounds':
+			df_non_hubs = counts_chebiids['chebiid']
 		
 		# Remove hub compounds from the network
 		long_format_reaction_participant_table = long_format_reaction_participant_table.merge(df_non_hubs, on='chebiid', how='inner')
@@ -33,6 +35,7 @@ class ReactionNetwork():
 
 		# Drop transports
 		df_m = df_m[df_m['reaction_side_x'] != df_m['reaction_side_y']]
+		print(df_m[df_m['MASTER_ID'].isin([69340, 69348, 69352])])
 		df_m['chebipair'] = df_m.apply(lambda row: '.'.join(sorted([row['chebiid_x'], row['chebiid_y']])), axis=1)
 		df_m.drop(columns=['reaction_side_x', 'chebiid_x', 'smiles_x',
 		'reaction_side_y', 'chebiid_y', 'smiles_y'], inplace=True)

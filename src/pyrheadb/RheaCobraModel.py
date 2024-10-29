@@ -16,7 +16,7 @@ class RheaCobraModel():
 		
 		# preprocessing dfs
 		self.rdb = rdb
-		self.df_smiles_chebi_equation_master_id = self.rdb.df_smiles_master_id.copy()
+		self.df_smiles_chebi_equation_master_id = self.rdb.df_reactions.copy()
 		self.assign_subsystems_to_reactions()
 		self.assign_names_to_reactions()
 		self.set_bounds()
@@ -55,25 +55,16 @@ class RheaCobraModel():
 		Since we do not have names for reactions, I use Web-RInChIKeys
 		:return:
 		"""
-		filepath = os.path.dirname(__file__)
-		os.makedirs(os.path.join(filepath,'cache'), exist_ok=True)
-		filename_df_smiles_chebi_equation_webrinchikeys = os.path.join(filepath, 'cache',
-															   f'{self.model_name}_webrinchikey.tsv')
-		if not os.path.exists(filename_df_smiles_chebi_equation_webrinchikeys):
-			# Calculating Reaction InChiKeys
-			self.df_smiles_chebi_equation_master_id=self.rdb.add_rinchikey(self.df_smiles_chebi_equation_master_id)
-			len_before = len(self.df_smiles_chebi_equation_master_id)
-			print('Total number of reactions in the rhea reactions set:', len_before)
-			self.df_smiles_chebi_equation_master_id.dropna(subset=['Web-RInChIKey'], inplace=True)
-			len_after = len(self.df_smiles_chebi_equation_master_id)
-			print('Number of reactions after excluding those for which it was impossible to calculate Web-RInChIKey:', len_after)
-			print(len_before-len_after, ' reactions were excluded and not added to the model since their structures were not defined')
-			self.df_smiles_chebi_equation_master_id.drop_duplicates(subset=['Web-RInChIKey'], inplace=True)
-			print('Remained:', len(self.df_smiles_chebi_equation_master_id), 'non-duplicate reactions')
-			self.df_smiles_chebi_equation_master_id['webinchi_name'] = self.df_smiles_chebi_equation_master_id['Web-RInChIKey'].apply(
-				lambda x: x.replace('Web-RInChIKey=', '').replace('-', '_'))
-			self.df_smiles_chebi_equation_master_id.to_csv(filename_df_smiles_chebi_equation_webrinchikeys, sep='\t', index=False)
-		self.df_smiles_chebi_equation_master_id=pd.read_csv(filename_df_smiles_chebi_equation_webrinchikeys, sep='\t')
+		len_before = len(self.df_smiles_chebi_equation_master_id)
+		print('Total number of reactions in the rhea reactions set:', len_before)
+		self.df_smiles_chebi_equation_master_id.dropna(subset=['Web-RInChIKey'], inplace=True)
+		len_after = len(self.df_smiles_chebi_equation_master_id)
+		print('Number of reactions after excluding those for which it was impossible to calculate Web-RInChIKey:', len_after)
+		print(len_before-len_after, ' reactions were excluded and not added to the model since their structures were not defined')
+		self.df_smiles_chebi_equation_master_id.drop_duplicates(subset=['Web-RInChIKey'], inplace=True)
+		print('Remained:', len(self.df_smiles_chebi_equation_master_id), 'non-duplicate reactions')
+		self.df_smiles_chebi_equation_master_id['webinchi_name'] = self.df_smiles_chebi_equation_master_id['Web-RInChIKey'].apply(
+			lambda x: x.replace('Web-RInChIKey=', '').replace('-', '_'))
 		
 	def add_all_rhea_reactions_to_model(self):
 		"""

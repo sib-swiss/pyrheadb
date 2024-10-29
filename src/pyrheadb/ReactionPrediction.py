@@ -9,6 +9,7 @@ import re
 # RDLogger.DisableLog('rdApp.*')
 
 from .Reaction import Reaction
+from .RInChI import RInChI
 
 #####################################################################################################################
 #   ReactionPrediction class that takes a compound or a set of compounds as potential substrates and tests          #
@@ -38,6 +39,7 @@ class ReactionPrediction:
     
     def set_star_smarts_only(self, new_star_smarts_only_option):
         self.star_smarts_only = new_star_smarts_only_option
+        
     def load_smarts_data(self):
         """
         Correct the location of SMARTS json
@@ -59,8 +61,11 @@ class ReactionPrediction:
         """
         
         for rxnid, smarts in self.smarts_data.items():
-            self.rdkit_stereo_rxn_data[rxnid] = self.parse_one_smarts_into_rdkit_rxn(smarts)
-            self.rdkit_flat_rxn_data[rxnid] = self.parse_one_smarts_into_rdkit_rxn(smarts.replace('@', '')) # could be not enough, need to see use cases when stereo info is still left
+            try:
+                self.rdkit_stereo_rxn_data[rxnid] = self.parse_one_smarts_into_rdkit_rxn(smarts)
+                self.rdkit_flat_rxn_data[rxnid] = self.parse_one_smarts_into_rdkit_rxn(smarts.replace('@', '')) # could be not enough, need to see use cases when stereo info is still left
+            except:
+                print(rxnid, smarts)
             
     def parse_one_smarts_into_rdkit_rxn(self, smarts):
         """
@@ -149,6 +154,7 @@ class ReactionPrediction:
     def load_defined_cofactor_smarts(self):
         for rxnid, smarts in self.smarts_data.items():
             self.defined_cofactor_smarts[rxnid] = self.get_defined_substrates_and_products(smarts)
+            
     def get_defined_substrates_and_products(self, smarts):
         _, defined_reactant_templates, _, defined_product_templates = self.__split_reaction_smarts(smarts)
         reactant_smiles = [self.smiles_from_smarts(sm) for sm in defined_reactant_templates]
@@ -161,6 +167,7 @@ class ReactionPrediction:
         for atom in mol.GetAtoms():
             atom.SetAtomMapNum(0)
         return Chem.MolToSmiles(mol)
+    
     def check_substrate(self, substrate_smiles):
         """
         Set one substrate for reaction prediction.
@@ -323,7 +330,11 @@ class ReactionPrediction:
         :param df_predicted_reactions: pandas.DataFrame of predicted reactions
         :return: filtered df
         """
-        df_predicted_reactions = self.rdb.add_rinchikey(df_predicted_reactions)
+        rinchiobj = RInChI()
+
+        print('Calculating Reaction InChiKeys')
+        df_predicted_reactions[['RInChI','Web-RInChIKey']] = \
+             df_predicted_reactions.apply(lambda row: rinchiobj.error_handle_wrap_rinchi(row['rxnsmiles']), axis=1, result_type='expand')
         result = df_predicted_reactions.groupby('Web-RInChIKey').agg({
             'rheaid': lambda x: ', '.join(x),
             'rxnsmiles': 'first'

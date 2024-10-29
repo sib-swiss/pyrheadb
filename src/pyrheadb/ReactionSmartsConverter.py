@@ -26,7 +26,7 @@ class ReactionSmartsConverter():
 		self.rhea_db_version_location = rhea_db.rhea_db_version_location
 		self.rxn_mapper = AtomMapper()
 		self.reactionobj = Reaction()
-		self.df_smiles = rhea_db.df_smiles_master_id.copy()
+		self.df_smiles = rhea_db.df_reactions.copy()
 		
 	def convert_all_rhea_smiles_to_smarts(self, debug=False):
 		"""
@@ -52,8 +52,9 @@ class ReactionSmartsConverter():
 			~self.df_smiles['star_count'].isin([1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 39, 41])]
 		
 		print('Converting reaction SMILES into SMARTS')
-		self.df_smiles['SMARTS'] = self.df_smiles.progress_apply(self.generate_smarts, axis=1, debug_mode=debug_mode)
-		self.df_smiles = self.df_smiles[self.df_smiles['SMARTS']!=None]
+		self.df_smiles['SMARTS_with_halogens'] = self.df_smiles.progress_apply(self.generate_smarts, axis=1, debug_mode=debug_mode)
+		self.df_smiles['SMARTS'] = self.df_smiles.apply(self.clean_rxn_smarts_of_halogen_star, axis=1)
+		self.df_smiles = self.df_smiles[~self.df_smiles['SMARTS'].isna()]
 		
 	def write_smarts_files(self):
 		"""
@@ -81,7 +82,37 @@ class ReactionSmartsConverter():
 	def clean_rxn_smiles_of_redox(self, row):
 		rxnsmiles=row['rxnsmiles']
 		return self.reactionobj.clean_rxnsmiles_of_redox(rxnsmiles)
+
+	def clean_rxn_smarts_of_halogen_star(self, row):
+		"""
+		CHEBI:16042 - halide anion
+		"""
+		if 'CHEBI:16042' in row['chebi_equation']:
+			return self.replace_isolated_star_with_halogens(row['SMARTS_with_halogens'])
+		return row['SMARTS_with_halogens']
+
+	def replace_isolated_star_with_halogens(self, equation):
+		# Identify all isolated atoms from both sides of the equation
+		isolated_atoms = self.find_isolated_atoms(equation)
+
+		# Replace isolated atoms in the equation based on identified atom numbers
+		for number in isolated_atoms:
+			equation = equation.replace(f"[*:{number}]", f"[F,Cl,Br,I:{number}]")
+			equation = equation.replace(f"[*-:{number}]", f"[F,Cl,Br,I-:{number}]")
+		return equation
+	
+	def find_isolated_atoms(self, equation):
+		# Split the equation into left and right sides based on ">>"
+		left_side, right_side = equation.split(">>")
 		
+		# Identify isolated atoms on both sides using regex
+		isolated_left = set(re.findall(r'\[\*\-\:(\d+)\]', left_side))
+		isolated_right = set(re.findall(r'\[\*\-\:(\d+)\]', right_side))
+		
+		# Combine all unique isolated atoms from both sides
+		all_isolated_atoms = isolated_left.union(isolated_right)
+		print(all_isolated_atoms)
+		return all_isolated_atoms
 
 	def remove_free_hydrogen_pattern(self, smarts):
 		# Define the regular expression pattern to match "[F:*]"

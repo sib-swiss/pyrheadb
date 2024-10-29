@@ -11,6 +11,13 @@ Repository for the Python package intended to facilitate access to Rhea data fro
 
 Installation and usage
 ======================
+
+```bash
+pip install pyrheadb
+```
+
+> You might
+
 Check [Wiki](https://github.com/sib-swiss/pyrheadb/wiki) for info about installation and usage.
 
 

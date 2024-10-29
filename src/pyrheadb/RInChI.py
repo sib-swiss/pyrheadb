@@ -42,7 +42,7 @@ from rdkit import Chem
 
 class RInChI():
 	def __init__(self):
-		lib_path = os.path.join(os.path.dirname(__file__),'bin','rinchi_lib')#.replace('src/pyrheadb', '')+'/bin/rinchi_lib/'
+		lib_path = os.path.join(os.path.dirname(__file__),'bin','rinchi_lib')
 		if os.sep == "\\":
 			self.lib_handle = cdll.LoadLibrary(os.path.join(lib_path,"windows","x86_64","librinchi.dll"))
 		else:

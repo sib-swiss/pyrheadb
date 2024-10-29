@@ -13,10 +13,6 @@ examples/plots/
 Pipfile
 analytics/*
 docs/*
-# going to remove from git ignore once the pairs analysis work is done
-src/pyrheadb/CompoundPairs.py
-# going to remove from git ignore once the logic developed for gangliosides is generalised
-src/pyrheadb/gangliosides/*
 
 # cache of pyrheadb scripts running
 src/pyrheadb/cache/
@@ -24,6 +20,9 @@ src/pyrheadb/cache/
 #output folders
 rhea-versions/*
 examples/rheadata/*
+
+# VS Code
+.vscode/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

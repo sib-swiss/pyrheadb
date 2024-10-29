@@ -12,7 +12,7 @@ class TestReactionSmartsConverter(unittest.TestCase):
         # Set up a test instance and other recurring objects
         self.rhea_db_mock = MagicMock()
         self.rhea_db_mock.rhea_db_version_location = 'mock/location'
-        self.rhea_db_mock.df_smiles_master_id = pd.DataFrame({
+        self.rhea_db_mock.df_reactions = pd.DataFrame({
             'MASTER_ID': [1, 2, 3],
             'rxn': ['C>>C', 'C.C>>CC', 'CC>>C.C'],
         })

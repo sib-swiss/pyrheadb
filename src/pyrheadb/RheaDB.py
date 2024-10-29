@@ -87,16 +87,26 @@ class RheaDB:
         """
         self.__download_rhea_version_full()
         self.__extract_rhea_structure()
-        self.__generate_smiles_chebi_reaction_equation_file()
-        self.df_smiles_chebi_equation = self.__read_tsv_to_pandas('rhea-reaction-smiles-chebi.tsv')
-        self.__read_rhea_files()
-        self.__add_master_id_to_hierarchy()
-        self.__add_master_id_to_rxnsmiles()
-        self.__set_undefined_compound_star_flag()
         self.__extract_rhea_compound_sdf()
         self.__parse_sdf()
         self.df_chebi_cmpname = self.__read_tsv_to_pandas('chebi_cmpname.tsv')
-        self.__generate_reaction_compound_names_file()
+        self.__read_rhea_files()
+        self.__add_master_id_to_hierarchy()
+        
+        pyrheadb_reactions_file = os.path.join(f'{self.rhea_db_version_location}','tsv','pyrheadb_reactions.tsv')
+        if not os.path.exists(pyrheadb_reactions_file):
+            self.__generate_smiles_chebi_reaction_equation_file()
+            self.df_smiles_chebi_equation = self.__read_tsv_to_pandas('rhea-reaction-smiles-chebi.tsv')
+            self.__add_master_id_to_rxnsmiles()
+            self.__generate_reaction_compound_names_file()
+            self.__merge_all_intermediate_reaction_files_into_one()
+            self.__separate_protein_residue_from_unstructured_compound_reactions()
+            self.__set_class_reaction_flag()
+            self.__add_rinchikey()
+            self.df_reactions.to_csv(pyrheadb_reactions_file, sep='\t', index=False)
+        else:
+            self.df_reactions = pd.read_csv(pyrheadb_reactions_file, sep='\t')
+
         self.__load_long_table_reaction_participants()
     
     def __read_tsv_to_pandas(self, tsv_filename, columnsnames=[]):
@@ -141,7 +151,6 @@ class RheaDB:
         self.df_hierarchy = self.__read_tsv_to_pandas('rhea-relationships.tsv')
         self.df_directions = self.__read_tsv_to_pandas('rhea-directions.tsv')
         self.df_smiles = self.__read_tsv_to_pandas('rhea-reaction-smiles.tsv', columnsnames=['rheaid', 'rxnsmiles'])
-        self.df_chebi_smiles = self.__read_tsv_to_pandas('rhea-chebi-smiles.tsv', columnsnames=['chebiid', 'smiles'])
 
     def __extract_rhea_structure(self):
         """
@@ -176,7 +185,7 @@ class RheaDB:
         Returns:
            pd.DataFrame: The loaded data as a pandas DataFrame.
         """
-        rhea_hierarchy_file = os.path.join(f'{self.rhea_db_version_location}','tsv','rhea-relationships-master-id.tsv')
+        rhea_hierarchy_file = os.path.join(f'{self.rhea_db_version_location}','tsv','rhea-relationships-reaction-hierarchy.tsv')
         if not Path(rhea_hierarchy_file).exists():
             self.df_hierarchy_master_id = self.df_hierarchy.copy()
             self.df_hierarchy_master_id[['FROM_REACTION_ID_MASTER_ID', 'DIR_FROM']] =\
@@ -227,12 +236,12 @@ class RheaDB:
         # None is for obsolete reactions
         return None
     
-    def __set_undefined_compound_star_flag(self):
+    def __set_class_reaction_flag(self):
         """
         Mark the reactions with compounds that do not have fully defined structures in the dataframe
         :return:
         """
-        self.df_smiles_master_id['star'] = self.df_smiles_master_id['rxnsmiles'].apply(lambda x: "*" in x)
+        self.df_reactions['class_reaction_flag'] = self.df_reactions['rxnsmiles'].apply(lambda x: "*" in x)
     #
     # def rhea_atommap_reaction_reader(self):
     #     atommapped_file = 'data/rheadf_atom_mapped.tsv'
@@ -248,6 +257,7 @@ class RheaDB:
     #     else:
     #         self.df_one_dir_only_defined_rhea_smiles = pd.read_csv(atommapped_file, sep='\t')
 
+        
     def __generate_smiles_chebi_reaction_equation_file(self):
         """
         Download the reactions as .rxn folder from Rhea ftp
@@ -331,7 +341,64 @@ class RheaDB:
         reactant_names = [chebi_dict[chebi] for chebi in chebi_reactants]
         product_names = [chebi_dict[chebi] for chebi in chebi_products]
         return ' + '.join(reactant_names) + ' = ' + ' + '.join(product_names)
+    
+    def __merge_all_intermediate_reaction_files_into_one(self):
+        """
+        This function takes all the intermediate reaction files that were generated and merges them into one "df_reactions" dataframe.
+        This function also deletes all intermediate files, and only leaves the non-redundant dataframe files
+        """
         
+        self.df_reaction_participants_names.drop(columns=['rheaid'],inplace=True)
+        self.df_smiles_master_id.drop(columns=['DIR'],inplace=True)
+        self.df_reactions = self.df_reaction_participants_names.merge(self.df_smiles_master_id, on='MASTER_ID')
+        os.remove(os.path.join(f'{self.rhea_db_version_location}','tsv','rhea-reaction-smiles-master-id.tsv'))
+        os.remove(os.path.join(f'{self.rhea_db_version_location}','tsv','rhea-reaction-participant-names.tsv'))
+        os.remove(os.path.join(f'{self.rhea_db_version_location}','tsv','rhea-reaction-smiles-chebi.tsv'))
+    
+    def __separate_protein_residue_from_unstructured_compound_reactions(self):
+        """
+        Some Rhea reactions have * because they have protein, DNA etc molecule attached.
+        These reactions cannot be used as templates and they have to be substituted by dummy atom (here At)
+        """
+        self.df_reactions.rename(columns={'rxnsmiles':'rxnsmiles_no_residue_correction'}, inplace=True)
+        self.df_reactions[['residue_rxn_flag', 'rxnsmiles']] = self.df_reactions.apply(self.__identify_and_process_residue_row, axis=1, result_type='expand')
+    
+    def __identify_and_process_residue_row(self, row):
+        if not 'residue' in str(row['reaction_participant_names']):
+            return False, row['rxnsmiles_no_residue_correction']
+        
+        reactant_names = row['reaction_participant_names'].split(' = ')[0].split(' + ')
+        product_names = row['reaction_participant_names'].split(' = ')[1].split(' + ')
+
+        reactant_smiles = row['rxnsmiles_no_residue_correction'].split('>>')[0].split('.')
+        product_smiles = row['rxnsmiles_no_residue_correction'].split('>>')[1].split('.')
+
+        new_smiles_reactants = self.__process_side_identify_residues(reactant_names, reactant_smiles)
+        new_smiles_products = self.__process_side_identify_residues(product_names, product_smiles)
+
+        return True, '.'.join(new_smiles_reactants)+'>>'+'.'.join(new_smiles_products)
+
+    def __process_side_identify_residues(self, names, smiles):
+        assert len(names) == len(smiles)
+        new_smiles_reactants = []
+        for i in range(len(names)):
+            if 'residue' in names[i]:
+                new_smiles_reactants.append(smiles[i].replace('*','At'))
+            else:
+                new_smiles_reactants.append(smiles[i])
+        return new_smiles_reactants
+
+    def __add_rinchikey(self):
+        """
+        add_rinchikey_column
+        :param df_rxnsmiles: pandas dataframe with rxnsmiles columns
+        :return: dataframe with RInChI column added
+        """
+        rinchiobj = RInChI()
+        print('Calculating Reaction InChiKeys')
+        self.df_reactions[['RInChI','Web-RInChIKey']] = \
+            self.df_reactions.apply(lambda row: rinchiobj.error_handle_wrap_rinchi(row['rxnsmiles']), axis=1, result_type='expand')
+          
     def __load_long_table_reaction_participants(self):
         """
         This function transforms the wide format of storing reaction-compounds relationship
@@ -345,12 +412,12 @@ class RheaDB:
         
         Uses self.df_smiles_master_id table
         :return: generates self.rhea_reaction_long_format_smiles_chebi pabdas dataframe
-        and self.rhea_reaction_long_format_smiles_chebi.tsv file
+        and rhea_reaction_long_format_smiles_chebi.tsv file
         """
         filename_rhea_reaction_smiles_chebi = os.path.join(f'{self.rhea_db_version_location}','tsv','rhea-reaction-long-format-smiles-chebi.tsv')
         if not os.path.exists(filename_rhea_reaction_smiles_chebi):
             with open(filename_rhea_reaction_smiles_chebi, 'w') as w:
-                w.write('MASTER_ID\treaction_side\tchebiid\tsmiles\n')
+                w.write('MASTER_ID\treaction_side\tchebiid\tsmiles\tinchi\tinchikey\tinchikey14L\n')
                 for index, row in self.df_smiles_master_id.iterrows():
                     chebi_equation = row['chebi_equation']
                     rxnsmiles = row['rxnsmiles']
@@ -360,17 +427,27 @@ class RheaDB:
                     reactant_smiles = rxnsmiles.split('>>')[0].split('.')
                     assert len(reactant_chebis) == len(reactant_smiles)
                     for i in range(len(reactant_chebis)):
-                        w.write(f'{rheaid}\t{rheaid}_L\t{reactant_chebis[i]}\t{reactant_smiles[i]}\n')
+                        reactant_inchi, reactant_inchikey = self.__get_inchi_inchikey(reactant_smiles[i])
+                        w.write(f"{rheaid}\t{rheaid}_L\t{reactant_chebis[i]}\t{reactant_smiles[i]}\t{reactant_inchi}\t{reactant_inchikey}\t{reactant_inchikey.split('-')[0]}\n")
 
                     product_chebis = chebi_equation.split('>>')[1].split('.')
                     product_smiles = rxnsmiles.split('>>')[1].split('.')
                     assert len(product_chebis) == len(product_smiles)
                     for i in range(len(product_chebis)):
-                        w.write(f'{rheaid}\t{rheaid}_R\t{product_chebis[i]}\t{product_smiles[i]}\n')
+                        product_inchi, product_inchikey = self.__get_inchi_inchikey(product_smiles[i])
+                        w.write(f"{rheaid}\t{rheaid}_R\t{product_chebis[i]}\t{product_smiles[i]}\t{product_inchi}\t{product_inchikey}\t{product_inchikey.split('-')[0]}\n")
                         
         self.rhea_reaction_long_format_smiles_chebi = pd.read_csv(
             os.path.join(f'{self.rhea_db_version_location}','tsv','rhea-reaction-long-format-smiles-chebi.tsv'), sep='\t')
         self.rhea_reaction_long_format_smiles_chebi.drop_duplicates(inplace=True)
+
+    def __get_inchi_inchikey(self, smiles):
+        mol = Chem.MolFromSmiles(smiles)
+        inchi = Chem.MolToInchi(mol)
+        inchikey = Chem.MolToInchiKey(mol)
+        if not inchi:
+            return 'NA', 'NA-NA-NA'
+        return inchi, inchikey
 
     def __parse_sdf(self):
         """
@@ -399,106 +476,28 @@ class RheaDB:
             for compound_id, compound_name in compound_id_name_dict.items():
                 w.write(f'{compound_id}\t{compound_name}\n')
 
-    def print_all_dataframe_columns(self):
+    def data_overview(self):
         """
         Function for summary of the RheaDB:
-        prints all the dataframes of the class and their columns
+        prints all the dataframes that can be used for other applications
         :return:
         """
         print('1.')
-        print("self.df_smiles_chebi_equation")
-        print(self.df_smiles_chebi_equation.columns)
-        print()
-        print('2.')
-        print("self.df_hierarchy")
-        print(self.df_hierarchy.columns)
-        print()
-        print('3.')
-        print("self.df_directions")
-        print(self.df_directions.columns)
-        print()
-        print('4.')
-        print("self.df_smiles")
-        print(self.df_smiles.columns)
-        print()
-        print('5.')
-        print("self.df_chebi_smiles")
-        print(self.df_chebi_smiles.columns)
-        print()
-        print('6.')
-        print("self.df_chebi_cmpname")
-        print(self.df_chebi_cmpname.columns)
-        print()
-        print('7.')
         print("self.df_hierarchy_master_id")
         print(self.df_hierarchy_master_id.columns)
-        print()
-        print('8.')
-        print("self.df_smiles_master_id")
-        print(self.df_smiles_master_id.columns)
-        print()
-        print('9.')
-        print("self.df_reaction_participants_names")
-        print(self.df_reaction_participants_names.columns)
-        print()
-        print('10.')
-        print("self.rhea_reaction_long_format_smiles_chebi")
-        print(self.rhea_reaction_long_format_smiles_chebi.columns)
-        
-    def print_all_dataframe_shapes(self):
-        """
-        Function for summary of the RheaDB:
-        prints all the dataframes of the class and their columns
-        :return:
-        """
-        print('1.')
-        print("self.df_smiles_chebi_equation")
-        print(self.df_smiles_chebi_equation.shape)
-        print()
-        print('2.')
-        print("self.df_hierarchy")
-        print(self.df_hierarchy.shape)
-        print()
-        print('3.')
-        print("self.df_directions")
-        print(self.df_directions.shape)
-        print()
-        print('4.')
-        print("self.df_smiles")
-        print(self.df_smiles.shape)
-        print()
-        print('5.')
-        print("self.df_chebi_smiles")
-        print(self.df_chebi_smiles.shape)
-        print()
-        print('6.')
-        print("self.df_chebi_cmpname")
-        print(self.df_chebi_cmpname.shape)
-        print()
-        print('7.')
-        print("self.df_hierarchy_master_id")
         print(self.df_hierarchy_master_id.shape)
         print()
-        print('8.')
-        print("self.df_smiles_master_id")
-        print(self.df_smiles_master_id.shape)
+        print('2.')
+        print("self.df_reactions")
+        print(self.df_reactions.columns)
+        print(self.df_reactions.shape)
         print()
-        print('9.')
-        print("self.df_reaction_participants_names")
-        print(self.df_reaction_participants_names.shape)
-        print()
-        print('10.')
+        print('3.')
         print("self.rhea_reaction_long_format_smiles_chebi")
+        print(self.rhea_reaction_long_format_smiles_chebi.columns)
         print(self.rhea_reaction_long_format_smiles_chebi.shape)
-        
-    def add_rinchikey(self, df_rxnsmiles):
-        """
-        add_rinchikey_column
-        :param df_rxnsmiles: pandas dataframe with rxnsmiles columns
-        :return: dataframe with RInChI column added
-        """
-        rinchiobj = RInChI()
-        print('Calculating Reaction InChiKeys')
-        df_rxnsmiles['Web-RInChIKey'] = \
-            df_rxnsmiles['rxnsmiles'].progress_apply(rinchiobj.error_handle_wrap_webrinchikey_only)
-        return df_rxnsmiles
+        print()
+        print(4.)
+        print("self.df_chebi_cmpname")
+        print(self.df_chebi_cmpname.columns)
+        print(self.df_chebi_cmpname.shape)
