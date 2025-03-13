@@ -4,6 +4,7 @@ from rdkit.Chem.Draw import rdMolDraw2D
 import io
 import os
 from PIL import Image
+import matplotlib.pyplot as plt
 
 class Visualization():
     
@@ -67,3 +68,38 @@ class Visualization():
         
         self.draw_compound_smarts("[CH3:1][CH2:2][CH2:3][CH2:4][C:5](=[O:6])[NH2:7].[OH2:1]", 'test_reactants')
         self.draw_compound_smarts("[CH3:1][CH2:2][CH2:3][CH2:4][C:5](=[O:6])[O-:7].[NH4+:1]", 'test_products')
+
+    def create_and_save_histogram(df, column_name, bins=10, output_image_path='histogram.png'):
+        """
+        Creates a histogram of the specified column in the DataFrame and saves it as an image.
+        
+        Parameters:
+            df (pd.DataFrame): The DataFrame containing the data.
+            column_name (str): The name of the column to create the histogram for.
+            bins (int): Number of bins for the histogram. Default is 10.
+            output_image_path (str): The path where the histogram image will be saved. Default is 'histogram.png'.
+            
+        Returns:
+            None
+
+        Raises:
+            ValueError: If the specified column does not exist in the DataFrame.
+        """
+        # Ensure the column exists in the DataFrame
+        if column_name not in df.columns:
+            raise ValueError(f"Column '{column_name}' does not exist in the DataFrame.")
+        
+        # Filter values between 0 and 1
+        data = df[column_name].dropna()  # Remove NaN values
+        data = data[(data >= 0) & (data <= 1)]
+        
+        # Create the histogram
+        plt.figure(figsize=(8, 6))
+        plt.hist(data, bins=bins, edgecolor='black', color='blue')
+        plt.title(f'Histogram of {column_name}')
+        plt.xlabel(column_name)
+        plt.ylabel('Frequency')
+        
+        # Save the histogram as an image
+        plt.savefig(output_image_path)
+        plt.close()  # Close the figure to free memory

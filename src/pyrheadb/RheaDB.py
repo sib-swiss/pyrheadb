@@ -79,7 +79,7 @@ class RheaDB:
             version = int(f.readline().split('=')[1].strip())
         Path('rhea-release.properties').unlink(missing_ok=True)
         return version
-
+    
     def __load_rhea(self):
         """
         Load Rhea DB - download files and generate tsv from .rxn
@@ -88,8 +88,6 @@ class RheaDB:
         self.__download_rhea_version_full()
         self.__extract_rhea_structure()
         self.__extract_rhea_compound_sdf()
-        self.__parse_sdf()
-        self.df_chebi_cmpname = self.__read_tsv_to_pandas('chebi_cmpname.tsv')
         self.__read_rhea_files()
         self.__add_master_id_to_hierarchy()
         
@@ -102,6 +100,7 @@ class RheaDB:
             self.__merge_all_intermediate_reaction_files_into_one()
             self.__separate_protein_residue_from_unstructured_compound_reactions()
             self.__set_class_reaction_flag()
+            self.__set_polymer_reaction_flag()
             self.__add_rinchikey()
             self.df_reactions.to_csv(pyrheadb_reactions_file, sep='\t', index=False)
         else:
@@ -176,6 +175,10 @@ class RheaDB:
             with gzip.open(os.path.join(f'{self.rhea_db_version_location}','ctfiles','rhea.sdf.gz'), 'rb') as file_in:
                 with open(os.path.join(f'{self.rhea_db_version_location}','sdf','rhea.sdf'), 'wb') as file_out:
                     shutil.copyfileobj(file_in, file_out)
+        if not os.path.exists(os.path.join(f'{self.rhea_db_version_location}','tsv','chebi_in_rhea.tsv')):
+            self.__parse_sdf()
+        
+        self.df_chebi_cmpname = self.__read_tsv_to_pandas('chebi_in_rhea.tsv')
 
         
     def __add_master_id_to_hierarchy(self):
@@ -241,7 +244,16 @@ class RheaDB:
         Mark the reactions with compounds that do not have fully defined structures in the dataframe
         :return:
         """
-        self.df_reactions['class_reaction_flag'] = self.df_reactions['rxnsmiles'].apply(lambda x: "*" in x)
+        reactionobj = Reaction()
+        self.df_reactions['rxn_smiles_no_A_AH']= self.df_reactions['rxnsmiles'].apply(reactionobj.remove_A_AH_pattern)
+        self.df_reactions['class_reaction_flag'] = self.df_reactions['rxn_smiles_no_A_AH'].apply(lambda x: "*" in x)
+
+    def __set_polymer_reaction_flag(self):
+        """
+        Mark the reactions with compounds that do not have fully defined structures in the dataframe
+        :return:
+        """
+        self.df_reactions['polymer_reaction_flag'] = self.df_reactions['chebi_equation'].apply(lambda x: "POLYMER" in x)
     #
     # def rhea_atommap_reaction_reader(self):
     #     atommapped_file = 'data/rheadf_atom_mapped.tsv'
@@ -459,22 +471,34 @@ class RheaDB:
         compound_id_name_dict = dict()
         new_compound = True
         name_attention = False
-        with open(os.path.join(f'{self.rhea_db_version_location}','sdf','rhea.sdf')) as f:
+        compound_sdf = ''
+        with open(os.path.join(f'{self.rhea_db_version_location}','sdf','rhea.sdf')) as f, \
+            open(os.path.join(f'{self.rhea_db_version_location}','tsv','chebi_in_rhea.tsv'), 'w') as w:
+            w.write('chebiid\tcmpname\tsmiles\tinchi\tinchikey\n')
             for line in f:
+                compound_sdf += line
                 if new_compound == True:
                     compound_id = line.strip()
                     new_compound = False
                 if line.startswith('$$$$'):
+                    m = Chem.MolFromMolBlock(compound_sdf)
+                    if not m:
+                        inchi = None
+                        inchikey=None
+                        smiles=None
+                    else:
+                        inchi = Chem.MolToInchi(m)
+                        inchikey = Chem.MolToInchiKey(m)
+                        smiles = Chem.MolToSmiles(m)
+                    w.write(f'{compound_id}\t{compound_name}\t{smiles}\t{inchi}\t{inchikey}\n')
+                    compound_sdf = ''
                     new_compound = True
                 if name_attention == True:
-                    compound_id_name_dict[compound_id] = line.strip()
+                    compound_name = line.strip()
                     name_attention = False
                 if line.startswith('> <Rhea_ascii_name>'):
                     name_attention = True
-        with open(os.path.join(f'{self.rhea_db_version_location}','tsv','chebi_cmpname.tsv'), 'w') as w:
-            w.write('chebiid\tcmpname\n')
-            for compound_id, compound_name in compound_id_name_dict.items():
-                w.write(f'{compound_id}\t{compound_name}\n')
+                
 
     def data_overview(self):
         """
@@ -498,6 +522,6 @@ class RheaDB:
         print(self.rhea_reaction_long_format_smiles_chebi.shape)
         print()
         print(4.)
-        print("self.df_chebi_cmpname")
+        print("self.df_chebi_in_rhea")
         print(self.df_chebi_cmpname.columns)
         print(self.df_chebi_cmpname.shape)

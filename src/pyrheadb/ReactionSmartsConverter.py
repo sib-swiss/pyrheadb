@@ -72,7 +72,7 @@ class ReactionSmartsConverter():
 		self.df_smiles=self.df_smiles[self.df_smiles['SMARTS']!='Not pattern after removing A / AH']
 		
 		self.df_smiles.to_csv(os.path.join(smarts_directory, 'rheaSmarts.tsv'), sep='\t', index=False,
-						 columns=['MASTER_ID', 'rheaid', 'chebi_equation', 'SMARTS', 'rxnsmiles'])
+						 columns=['MASTER_ID', 'chebi_equation', 'SMARTS', 'rxnsmiles'])
 		rhea_smarts_file = os.path.join(smarts_directory, 'rheaSmarts.json')
 		rhea_smarts = dict(zip(self.df_smiles['MASTER_ID'], self.df_smiles['SMARTS']))
 		
@@ -111,7 +111,6 @@ class ReactionSmartsConverter():
 		
 		# Combine all unique isolated atoms from both sides
 		all_isolated_atoms = isolated_left.union(isolated_right)
-		print(all_isolated_atoms)
 		return all_isolated_atoms
 
 	def remove_free_hydrogen_pattern(self, smarts):
@@ -172,3 +171,4 @@ class ReactionSmartsConverter():
 		rdChemReactions.SanitizeRxn(rxn)
 		rxn_smiles = rdChemReactions.ReactionToSmiles(rxn)
 		return rxn_smiles
+

@@ -21,13 +21,14 @@ class ReactionPrediction:
         Initializes the ReactionPrediction class.
         """
         self.rdb = rhea_db
-        self.rhea_db_version_location = rhea_db.rhea_db_version_location
+        self.rhea_db_version_location = rhea_db.rhea_db_version_location 
         self.rxnclass = Reaction()
         self.account_H_in_balance = False
         self.star_smarts_only = True # use only template/changeable part (compound with *) or full smarts (with defined cofactors, set this to False)
         self.rdkit_stereo_rxn_data = dict()
         self.rdkit_flat_rxn_data = dict()  # not stereo - remove all @ from reactions
         self.defined_cofactor_smarts=dict()
+        self.load_smarts_data()
     
     def set_account_H_in_balance(self, new_account_H_in_balance_option):
         """
@@ -196,7 +197,7 @@ class ReactionPrediction:
         # This should also be integrated to ensure the correct chemical context is maintained.
         if any(['@' in i for i in input_substrates]): rxn_used = self.rdkit_stereo_rxn_data
         else: rxn_used = self.rdkit_flat_rxn_data
-        
+
         # Produce list of reaction ids with product options as
         # [(rheaid1:[products1-1, products1-2]), (rheaid2:[products2-1, products2-2]), ...]
         if isinstance(input_substrates, str):
@@ -213,6 +214,7 @@ class ReactionPrediction:
         :return: list of products
         """
         if not self.check_substrate(substrate_smiles):
+            print(f'Subtrate quality check not passed for {substrate_smiles}')
             return None
         rheaid_to_products = []
         for rheaid, rxn in rxn_used.items():
@@ -245,6 +247,7 @@ class ReactionPrediction:
         :return: list of products
         """
         if not all([self.check_substrate(substrate_smiles) for substrate_smiles in input_substrates]):
+            print(f'Subtrate quality check not passed for {input_substrates}')
             return None
         rheaid_to_products = []
         for rheaid, rxn in rxn_used.items():
@@ -341,4 +344,20 @@ class ReactionPrediction:
         }).reset_index()
         return result
         
+    def count_substrate_templates(self):
+        counts_reactants = []
+        counts_products = []
+        counts_together = []
+        for rheaid, rxn in self.rdkit_stereo_rxn_data.items():
+            num_reactants, num_products = self.count_substrate_product_templates_per_rxn(rxn)
+            if num_reactants>3 or num_products>3:
+                print('4+ substrate templates in', rheaid)
+            counts_products.append(num_products)
+            counts_reactants.append(num_reactants)
+            counts_together.extend([num_reactants, num_products])
+        return counts_reactants, counts_products, counts_together
         
+    def count_substrate_product_templates_per_rxn(self, rxn):
+        num_reactants = rxn.GetNumReactantTemplates()
+        num_products = rxn.GetNumProductTemplates()
+        return num_reactants, num_products
