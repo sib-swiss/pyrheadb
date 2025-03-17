@@ -36,6 +36,7 @@
 # pragma endregion
 
 import os
+import platform
 from ctypes import *
 from rdkit import Chem
 
@@ -43,10 +44,7 @@ from rdkit import Chem
 class RInChI():
 	def __init__(self):
 		lib_path = os.path.join(os.path.dirname(__file__),'bin','rinchi_lib')
-		if os.sep == "\\":
-			self.lib_handle = cdll.LoadLibrary(os.path.join(lib_path,"windows","x86_64","librinchi.dll"))
-		else:
-			self.lib_handle = cdll.LoadLibrary(os.path.join(lib_path,"linux","x86_64","librinchi.so.1.0.0"))
+		self.lib_handle = self.get_lib_handle(lib_path)
 		
 		self.lib_latest_error_message = self.lib_handle.rinchilib_latest_err_msg
 		self.lib_latest_error_message.restype = c_char_p
@@ -71,6 +69,25 @@ class RInChI():
 		self.lib_rinchikey_from_rinchi.argtypes = [c_char_p, c_char_p, POINTER(c_char_p)]
 		self.lib_rinchikey_from_rinchi.restype = c_long
 	
+	def get_lib_handle(self, lib_path):
+		"""
+		Distinguish between Mac, Linux and Windows architecture
+		"""
+		system = platform.system()
+		architecture = platform.machine()
+
+		if os.sep == "\\":  # Windows
+			lib_handle = cdll.LoadLibrary(os.path.join(lib_path, "windows", "x86_64", "librinchi.dll"))
+		elif system == "Darwin":  # macOS
+			if architecture == "arm64":
+				lib_handle = cdll.LoadLibrary(os.path.join(lib_path, "mac", "arm64", "librinchi.dylib.1.0.0"))
+			else:  # Intel Mac
+				lib_handle = cdll.LoadLibrary(os.path.join(lib_path, "linux", "x86_64", "librinchi.so.1.0.0"))
+		else:  # Assume Linux
+			lib_handle = cdll.LoadLibrary(os.path.join(lib_path, "linux", "x86_64", "librinchi.so.1.0.0"))
+
+		return lib_handle
+
 	def rinchi_errorcheck(self, return_code):
 		if return_code != 0:
 			raise Exception(self.lib_latest_error_message())
