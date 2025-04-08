@@ -28,7 +28,6 @@ class ReactionPrediction:
         self.rdkit_stereo_rxn_data = dict()
         self.rdkit_flat_rxn_data = dict()  # not stereo - remove all @ from reactions
         self.defined_cofactor_smarts=dict()
-        self.load_smarts_data()
     
     def set_account_H_in_balance(self, new_account_H_in_balance_option):
         """
@@ -41,7 +40,7 @@ class ReactionPrediction:
     def set_star_smarts_only(self, new_star_smarts_only_option):
         self.star_smarts_only = new_star_smarts_only_option
         
-    def load_smarts_data(self):
+    def load_smarts_data_from_json(self):
         """
         Correct the location of SMARTS json
         self.smarts_data: DataFrame or dictionary containing reaction SMARTS patterns.

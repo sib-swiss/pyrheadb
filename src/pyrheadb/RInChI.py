@@ -124,9 +124,9 @@ class RInChI():
 	def inchis_from_rinchi(self, rinchi_string, rinchi_auxinfo):
 		"""Splits an RInChI string and optional RAuxInfo into components. Returns a dictionary of five lists: Direction, No-Structures, Reactants, Products, and Agents. Each Reactant, Product, and Agent list contains a set of (InChI, AuxInfo) tuples. The No-Structures list contains No-Structure counts for Reactants, Products, and Agents."""
 		inchis = c_char_p()
-		self.rinchi_errorcheck(self.lib_inchis_from_rinchi(rinchi_string, rinchi_auxinfo, byref(inchis)))
+		self.rinchi_errorcheck(self.lib_inchis_from_rinchi(rinchi_string.encode('utf-8'), rinchi_auxinfo.encode('utf-8'), byref(inchis)))
 		
-		lines = inchis.value.split("\n")
+		lines = str(inchis.value.decode('utf-8')).split("\n")
 		# Get rid of trailing line, if any.
 		if lines[len(lines) - 1] == "":
 			lines = lines[:len(lines) - 1]
@@ -155,7 +155,7 @@ class RInChI():
 		products = []
 		agents = []
 		
-		for i in range(0, len(lines) / 2):
+		for i in range(0, int(len(lines) / 2)):
 			component_prefix = lines[i * 2][:2]
 			inchi_string = lines[i * 2][2:]
 			aux_info = lines[i * 2 + 1][2:]

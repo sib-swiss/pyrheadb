@@ -451,6 +451,11 @@ class RheaDB:
                         
         self.rhea_reaction_long_format_smiles_chebi = pd.read_csv(
             os.path.join(f'{self.rhea_db_version_location}','tsv','rhea-reaction-long-format-smiles-chebi.tsv'), sep='\t')
+        
+        # Count stoichiometric coefficients per reaction side and ChEBI
+        # To remove once corrected in pyrheadb
+        self.rhea_reaction_long_format_smiles_chebi['stoich_coef'] = self.rhea_reaction_long_format_smiles_chebi.groupby(['reaction_side', 'chebiid'])['chebiid'].transform('count')
+        self.rhea_reaction_long_format_smiles_chebi = self.rhea_reaction_long_format_smiles_chebi.copy()
         self.rhea_reaction_long_format_smiles_chebi.drop_duplicates(inplace=True)
 
     def __get_inchi_inchikey(self, smiles):

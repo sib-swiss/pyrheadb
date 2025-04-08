@@ -2,8 +2,44 @@ import networkx as nx
 import pandas as pd
 import os
 
+from rdkit import Chem
+
 class ReactionNetwork():
-	def __init__(self, rdb, type='chebiid', hub_compounds_from='from_count'):
+	def __init__(self):
+		pass
+
+	def build_network_from_reaction_smiles_list(self, reaction_smiles_list = []):
+
+		def smiles_to_inchikey(smiles):
+			mol = Chem.MolFromSmiles(smiles)
+			if mol:
+				return Chem.MolToInchiKey(mol)
+			return None
+
+		G = nx.Graph()
+		for reaction in reaction_smiles_list:
+			parts = reaction.split(">")
+			if len(parts) == 3:
+				reactants, _, products = parts
+				reactant_keys = [smiles_to_inchikey(sm) for sm in reactants.split(".")]
+				product_keys = [smiles_to_inchikey(sm) for sm in products.split(".")]
+
+				for rkey in reactant_keys:
+					if rkey:
+						G.add_node(rkey)
+				for pkey in product_keys:
+					if pkey:
+						G.add_node(pkey)
+
+				for rkey in reactant_keys:
+					for pkey in product_keys:
+						if rkey and pkey:
+							G.add_edge(rkey, pkey)
+							
+		self.participant_graph = G
+
+	
+	def build_network_from_rhea_tsv(self, rdb, type='chebiid', hub_compounds_from='from_count'):
 		"""
 		: param type : describes if network should be built from chebi ids, ichikeys or inchikey14L as nodes.
 		processes long_format_reaction_participant_table: table that contains information about which participant is in which reaction
@@ -86,17 +122,6 @@ class ReactionNetwork():
 		df_filtered.drop(columns=['reaction_side_x',  'smiles_x', 'inchi_x',
 		                   'reaction_side_y',  'smiles_y', 'inchi_y'], inplace=True)
 		self.df_long_format = df_filtered
-	
-	def get_disconnected_compounds(self):
-		components = [comp for comp in nx.connected_components(self.participants_graph)]
-		component_sizes = [len(comp) for comp in components]
-
-		compounds = []
-
-		for comp in components:
-			if len(comp) < max(component_sizes):
-				compounds.extend(comp)
-		return compounds
 
 	def analyze_basic_properties(self):
 		"""
@@ -162,3 +187,14 @@ class ReactionNetwork():
 		"""
 		all_pairs_shortest_path = dict(nx.all_pairs_shortest_path_length(self.participants_graph))
 		return all_pairs_shortest_path
+	
+	def get_disconnected_compounds(self, G):
+		components = [comp for comp in nx.connected_components(G)]
+		component_sizes = [len(comp) for comp in components]
+
+		compounds = []
+
+		for comp in components:
+			if len(comp) < max(component_sizes):
+				compounds.extend(comp)
+		return compounds
