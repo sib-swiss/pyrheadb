@@ -206,9 +206,9 @@ class RheaDB:
 
     def __add_master_id_to_rxnsmiles(self):
         """
-		Load Rhea reaction smiles
-		:return: pandas df of rxn smiles
-		"""
+        Load Rhea reaction smiles
+        :return: pandas df of rxn smiles
+        """
         rhea_reaction_smiles_master_id_file = os.path.join(f'{self.rhea_db_version_location}','tsv','rhea-reaction-smiles-master-id.tsv')
         if not Path(rhea_reaction_smiles_master_id_file).exists():
             self.df_smiles_master_id = self.df_smiles_chebi_equation.copy()
@@ -245,7 +245,8 @@ class RheaDB:
         :return:
         """
         reactionobj = Reaction()
-        self.df_reactions['rxn_smiles_no_A_AH']= self.df_reactions['rxnsmiles'].apply(reactionobj.remove_A_AH_pattern)
+        self.df_reactions['rxn_smiles_halogen']= self.df_reactions['rxnsmiles'].apply(reactionobj.clean_rxn_smarts_of_halogen_star)
+        self.df_reactions['rxn_smiles_no_A_AH']= self.df_reactions['rxn_smiles_halogen'].apply(reactionobj.remove_A_AH_pattern)
         self.df_reactions['class_reaction_flag'] = self.df_reactions['rxn_smiles_no_A_AH'].apply(lambda x: "*" in x)
 
     def __set_polymer_reaction_flag(self):
