@@ -44,7 +44,7 @@ class ReactionSmartsConverter():
 		"""
 		
 		# Cleaning the DataFrame of reactions not fitting into the SMARTS generation
-		self.df_smiles['rxn_clean_redox'] = self.df_smiles.apply(self.clean_rxn_smiles_of_redox, axis=1)
+		self.df_smiles['rxn_clean_redox'] = self.df_smiles['rxnsmiles'].apply(lambda x: self.reactionobj.remove_A_AH_pattern(x))
 		self.df_smiles['star_count'] = self.df_smiles['rxn_clean_redox'].apply(lambda x: x.count('*'))
 		
 		self.df_smiles = self.df_smiles[self.df_smiles['star_count'] > 0]

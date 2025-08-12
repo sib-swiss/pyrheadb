@@ -155,7 +155,7 @@ class RheaCobraModel():
 			print('No name found for metabolite, report the case:', metabolite_id)
 			metabolite_name = 'noname'
 		if not metabolite_SMILES:
-			metabolite_SMILES = self.rdb.df_chebi_smiles[self.rdb.df_chebi_smiles['chebiid']==metabolite_id]['smiles'].iloc[0]
+			metabolite_SMILES = self.rdb.df_chebi_cmpname[self.rdb.df_chebi_cmpname['chebiid']==metabolite_id]['smiles'].iloc[0]
 		calculated_formula = rdMolDescriptors.CalcMolFormula(MolFromSmiles(metabolite_SMILES))
 		# Change : to _ since cobra does not take strings with : as ids
 		metabolite_id = metabolite_id.replace(':','_')
