@@ -245,7 +245,7 @@ class RheaDB:
         :return:
         """
         reactionobj = Reaction()
-        self.df_reactions['rxn_smiles_halogen']= self.df_reactions['rxnsmiles'].apply(reactionobj.clean_rxn_smarts_of_halogen_star)
+        self.df_reactions['rxn_smiles_halogen']= self.df_reactions.apply(lambda row: reactionobj.clean_rxn_smarts_of_halogen_star({'SMARTS_with_halogens': row['rxnsmiles'], 'chebi_equation':row['chebi_equation']}), axis=1)
         self.df_reactions['rxn_smiles_no_A_AH']= self.df_reactions['rxn_smiles_halogen'].apply(reactionobj.remove_A_AH_pattern)
         self.df_reactions['class_reaction_flag'] = self.df_reactions['rxn_smiles_no_A_AH'].apply(lambda x: "*" in x)
 
