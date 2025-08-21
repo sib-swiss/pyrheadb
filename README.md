@@ -3,7 +3,7 @@ Repository for the Python package intended to facilitate access to Rhea data fro
 
 [![PyPI - Version](https://img.shields.io/pypi/v/pyrheadb.svg?logo=pypi&label=PyPI&logoColor=silver)](https://pypi.org/project/pyrheadb/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pyrheadb.svg?logo=python&label=Python&logoColor=silver)](https://pypi.org/project/pyrheadb/)
-[![license](https://img.shields.io/pypi/l/pyrheadb.svg?color=%2334D058)](https://github.com/sib-swiss/pyrheadb/LICENSE)
+[![license](https://img.shields.io/pypi/l/pyrheadb.svg?color=%2334D058)](https://github.com/sib-swiss/pyrheadb/blob/main/LICENSE)
 ![OS linux](https://img.shields.io/badge/OS-Linux-green)
 
 [![Tests](https://github.com/sib-swiss/pyrheadb/actions/workflows/test.yml/badge.svg)](https://github.com/sib-swiss/pyrheadb/actions/workflows/test.yml)

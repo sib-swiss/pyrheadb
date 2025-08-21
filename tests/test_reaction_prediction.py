@@ -14,7 +14,7 @@ test_rhea_db_path = os.path.join(current_dir, 'test_rhea_db')
 rhea_db_version = 130
 rdb = RheaDB(rhea_versions_folder_location=test_rhea_db_path, rhea_version=rhea_db_version)
 converter = ReactionSmartsConverter(rdb)
-#converter.convert_all_rhea_smiles_to_smarts()
+converter.convert_all_rhea_smiles_to_smarts()
 
 class TestReactionPrediction(unittest.TestCase):
     def setUp(self):
