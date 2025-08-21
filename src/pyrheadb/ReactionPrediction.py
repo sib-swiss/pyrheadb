@@ -28,6 +28,7 @@ class ReactionPrediction:
         self.rdkit_stereo_rxn_data = dict()
         self.rdkit_flat_rxn_data = dict()  # not stereo - remove all @ from reactions
         self.defined_cofactor_smarts=dict()
+        self.load_smarts_data_from_json()
     
     def set_account_H_in_balance(self, new_account_H_in_balance_option):
         """
@@ -271,9 +272,8 @@ class ReactionPrediction:
         # The molecules have not been sanitized, so it’s a good idea to at least update the valences before continuing:
         for p in product_set:
             p.UpdatePropertyCache(strict=False)
-            Chem.SanitizeMol(p, Chem.SanitizeFlags.SANITIZE_PROPERTIES)
         # Convert to SMILES
-        products = [Chem.MolToSmiles(p) for p in product_set]
+        products = [Chem.MolToSmiles(p, canonical=False) for p in product_set]
 
         return products
     
@@ -303,7 +303,8 @@ class ReactionPrediction:
                 rheaid2reaction.append((rheaid, reaction_smiles))
         df_rheaid_rxnsmiles = pd.DataFrame(rheaid2reaction,columns=['rheaid', 'rxnsmiles'])
         df_rheaid_rxnsmiles['balance']=df_rheaid_rxnsmiles['rxnsmiles'].apply(self.check_balance)
-        print('QC: number of unbalanced reactions generated:', len(df_rheaid_rxnsmiles[df_rheaid_rxnsmiles['balance']==False]))
+        df_rheaid_rxnsmiles = df_rheaid_rxnsmiles[df_rheaid_rxnsmiles['balance']==True]
+        print('number balanced reactions generated:', len(df_rheaid_rxnsmiles))
         return df_rheaid_rxnsmiles
         
     def reaction_smiles_from_reactants_and_products(self, rheaid='rheaid', substrates=[], products=[]):

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
-from pyrheadb.ReactionSmartsConverter import ReactionSmartsConverter
-from pyrheadb.ReactionPrediction import ReactionPrediction
-from pyrheadb.ReactionNetwork import ReactionNetwork
-
-from pyrheadb.RheaDB import RheaDB
+from .ReactionSmartsConverter import ReactionSmartsConverter
+from .ReactionPrediction import ReactionPrediction
+from .ReactionNetwork import ReactionNetwork
+from .RheaDB import RheaDB
+import pandas as pd
 
 rhea_db = RheaDB()
 
@@ -20,7 +20,8 @@ def setup_reaction_prediction(args):
     predictor = ReactionPrediction(rhea_db)
     substrates = args.substrates.split(',')
     df_predicted = predictor.predict_reactions(substrates)
-    df_predicted.to_csv(f'predicted_reactions_{args.substrates}.tsv', sep='\t', index=False)
+    if type(df_predicted)==pd.DataFrame and len(df_predicted)>0:
+        df_predicted.to_csv(f'predicted_reactions_{args.substrates}.tsv', sep='\t', index=False)
 
 def setup_disconnected_compound_identification(args):
     #

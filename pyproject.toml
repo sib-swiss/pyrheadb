@@ -1,75 +1,67 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "pyrheadb"
 version = "0.1.8"
-authors = [
-  { name="Anastasia Sveshnikova", email="anastasia.sveshnikova@sib.swiss" },
-]
 description = "Package to facilitate cheminformatics access to RheaDB and its analysis with Python"
 readme = "README.md"
 requires-python = ">=3.8"
-license-files = []
+authors = [
+  { name="Anastasia Sveshnikova", email="anastasia.sveshnikova@sib.swiss" },
+]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Operating System :: POSIX :: Linux",
-    "Operating System :: MacOS :: MacOS X",
-    "Operating System :: Microsoft :: Windows",
-    # "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
 ]
 
 dependencies = [
-    "setuptools", "pandas", "rdkit", "requests_ftp",
-    "networkx", "tqdm", "matplotlib",
-    "pathlib", "rxnmapper", "pillow", "cobra", "sparqlwrapper", "jupyterlab"
+  "pandas",
+  "rdkit",
+  "requests_ftp",
+  "networkx",
+  "tqdm",
+  "matplotlib",
+  "rxnmapper",
+  "pillow",
+  "cobra",
+  "sparqlwrapper",
+  "jupyterlab"
 ]
 
 [project.optional-dependencies]
 test = [
-    "pytest >=7.1.3",
-    "pytest-cov >=3.0.0",
-    "mypy >=1.4.1",
+  "pytest>=7.1.3",
+  "pytest-cov>=3.0.0",
+  "mypy>=1.4.1",
 ]
 
 [project.urls]
 Homepage = "https://github.com/sib-swiss/pyrheadb"
 Issues = "https://github.com/sib-swiss/pyrheadb/issues"
 
+# Console script
+[project.scripts]
+pyrheadb = "pyrheadb.cli:main"
 
-[build-system]
-requires = ["setuptools>=61.0", "wheel"]
-#requires = [
-#    "setuptools>=61.0",
-#    "requests_ftp>=0.3.1",
-#    "rxnmapper>=0.3.0",
-#    "rdkit>=2023.9.1",
-#    "pandas>=2.0.0",
-#    "networkx>=3.0",
-#    "tqdm>=4.0.0",
-#    "matplotlib>=3.6.0",
-#    "pathlib>=1.0.1",
-#    "pillow>=10.0.0",
-#    "cobra==0.29.1",
-#    "sparqlwrapper>=0.0.0",
-#    "jupyterlab>=4.2.0"]
-
-build-backend = "setuptools.build_meta"
+# Tell setuptools to look for packages in src/
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools]
-
 package-dir = {"" = "src"}
-packages = ["pyrheadb"]
 include-package-data = true
-
-#[tool.setuptools.package-data]
-#pyrheadb = ["pyrheadb/biochemical_assumptions", "pyrheadb/modeling_assumptions"]
-
 
 [tool.pytest.ini_options]
 addopts = [
-    "--cov=src",
-    "--color=yes",
-    "--cov-report=term-missing",
+  "--cov=src",
+  "--color=yes",
+  "--cov-report=term-missing",
 ]

@@ -1,6 +1,9 @@
 # setup.py used in local production, for the package pyproject.toml is used
 setup.py
 
+# all .DS_store files
+*.DS_Store
+
 # Downloaded file of rhea version
 rhea-release.properties
 
