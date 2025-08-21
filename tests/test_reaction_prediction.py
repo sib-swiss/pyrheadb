@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch, MagicMock, mock_open
 import os
 from pyrheadb.ReactionPrediction import ReactionPrediction
+from pyrheadb.ReactionSmartsConverter import ReactionSmartsConverter
 from pyrheadb.RheaDB import RheaDB
 
 current_dir = os.path.dirname(__file__)  # Gets the directory where this test file resides
@@ -12,6 +13,8 @@ test_rhea_db_path = os.path.join(current_dir, 'test_rhea_db')
 
 rhea_db_version = 130
 rdb = RheaDB(rhea_versions_folder_location=test_rhea_db_path, rhea_version=rhea_db_version)
+converter = ReactionSmartsConverter(rdb)
+converter.convert_all_rhea_smiles_to_smarts()
 
 class TestReactionPrediction(unittest.TestCase):
     def setUp(self):

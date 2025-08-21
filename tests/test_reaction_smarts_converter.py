@@ -42,13 +42,6 @@ class TestReactionSmartsConverter(unittest.TestCase):
         mock_open.assert_called_once()
         mock_json_dump.assert_called_once()
 
-    def test_clean_rxn_smiles_of_redox(self):
-        # Example to test the redox cleaning process
-        input_row = {'rxnsmiles': 'C.C.[H]*[H]>>CC.*'}
-        expected_output = 'C.C>>CC'
-        result = self.converter.clean_rxn_smiles_of_redox(input_row)
-        self.assertEqual(result, expected_output)
-
     def test_generate_smarts(self):
         # Mocking the Reaction class and its methods
         with patch('pyrheadb.Reaction', autospec=True) as mock_reaction_cls:

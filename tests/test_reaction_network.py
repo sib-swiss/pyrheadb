@@ -16,5 +16,5 @@ class TestReactionNetwork(unittest.TestCase):
     def test_get_disconnected_compounds(self):
         reactions = ['CCO.C[CH]C>>C[CH]CC', 'CCCC>>CCC.C', 'CCO.O>>CCO[O-]']
         self.reaction_net.build_network_from_reaction_smiles_list(reactions)
-        disconnected_compounds = self.reaction_net.get_disconnected_compounds(self.reaction_net.participant_graph)
+        disconnected_compounds = self.reaction_net.get_disconnected_compounds()
         print(disconnected_compounds)
