@@ -188,8 +188,8 @@ class ReactionNetwork():
 		all_pairs_shortest_path = dict(nx.all_pairs_shortest_path_length(self.participants_graph))
 		return all_pairs_shortest_path
 	
-	def get_disconnected_compounds(self, G):
-		components = [comp for comp in nx.connected_components(G)]
+	def get_disconnected_compounds(self):
+		components = [comp for comp in nx.connected_components(self.participants_graph)]
 		component_sizes = [len(comp) for comp in components]
 
 		compounds = []

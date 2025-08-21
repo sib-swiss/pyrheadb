@@ -25,7 +25,8 @@ def setup_reaction_prediction(args):
 
 def setup_disconnected_compound_identification(args):
     #
-    rxnnet = ReactionNetwork(rhea_db, type=args.network_type)
+    rxnnet = ReactionNetwork()
+    rxnnet.build_network_from_rhea_tsv(rhea_db, type=args.network_type)
     comps = rxnnet.get_disconnected_compounds()
     print('Total disconnected compounds identified:', len(comps))
     return comps
