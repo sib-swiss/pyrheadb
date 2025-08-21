@@ -36,7 +36,7 @@ class ReactionNetwork():
 						if rkey and pkey:
 							G.add_edge(rkey, pkey)
 							
-		self.participant_graph = G
+		self.participants_graph = G
 
 	
 	def build_network_from_rhea_tsv(self, rdb, type='chebiid', hub_compounds_from='from_count'):

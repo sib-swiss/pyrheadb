@@ -14,7 +14,7 @@ test_rhea_db_path = os.path.join(current_dir, 'test_rhea_db')
 rhea_db_version = 130
 rdb = RheaDB(rhea_versions_folder_location=test_rhea_db_path, rhea_version=rhea_db_version)
 converter = ReactionSmartsConverter(rdb)
-converter.convert_all_rhea_smiles_to_smarts()
+#converter.convert_all_rhea_smiles_to_smarts()
 
 class TestReactionPrediction(unittest.TestCase):
     def setUp(self):
@@ -42,7 +42,10 @@ class TestReactionPrediction(unittest.TestCase):
         
         # Verify that reaction results as expected
         expected_product_smiles = Chem.MolToSmiles(product_mol)
-        actual_product_smiles = Chem.MolToSmiles(Chem.MolFromSmiles(predicted_products[0][1][0][0]))
+        dict_rhea_products = {  }
+        for rhea_id, products in predicted_products:
+            dict_rhea_products[rhea_id] = products
+        actual_product_smiles = Chem.MolToSmiles(Chem.MolFromSmiles(dict_rhea_products['17761'][0][0]))
         self.assertEqual(actual_product_smiles, expected_product_smiles)
 
     def test_add_explicit_zero_charge(self):
