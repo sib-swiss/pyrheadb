@@ -78,22 +78,28 @@ class Reaction:
             mol_func = Chem.MolFromInchi
         
         reactants = [reactant.strip() for reactant in reactants.split(reactant_split)]
-        products = [product.strip() for product in products.split(product_split)]
-        
-        if debug_mode==True:
+        products  = [product.strip()  for product  in products.split(product_split)]
+        if debug_mode == True:
             print('reactants', reactants)
             print('products', products)
+        
         reactant_mols = [mol_func(reactant) for reactant in reactants]
-        product_mols = [mol_func(product) for product in products]
+        product_mols  = [mol_func(product)  for product  in products]
+
+        # Optionally, add hydrogens before counting.
+        if account_H == True:
+           reactant_mols = [Chem.AddHs(reactant_mol) for reactant_mol in reactant_mols]
+           product_mols  = [Chem.AddHs(product_mol)  for product_mol  in product_mols]
         
         reactant_counts_total, product_counts_total = self.calculate_atom_counts(
             reactant_mols, debug_mode=debug_mode), self.calculate_atom_counts(product_mols, debug_mode=debug_mode)
         
-        # Remove hydrogens from count - option
-        if account_H==False and 1 in reactant_counts_total.keys():
+        # Optionally, remove hydrogens from count.
+        if account_H == False and 1 in reactant_counts_total.keys():
             del reactant_counts_total[1]
-        if account_H==False and 1 in product_counts_total.keys():
+        if account_H == False and 1 in product_counts_total.keys():
             del product_counts_total[1]
+        
         return reactant_counts_total == product_counts_total
     
     def calculate_atom_counts(self, mols, debug_mode=False):
@@ -110,7 +116,7 @@ class Reaction:
         for mol in mols:
             if debug_mode == True:
                 print(Chem.MolToSmiles(mol))
-            if mol is not None:  # Handle the case where molecule conversion fails
+            if mol is not None: # Handle the case where molecule conversion fails
                 atom_counts = dict()
                 for atom in mol.GetAtoms():
                     if atom.GetAtomicNum() not in atom_counts:
