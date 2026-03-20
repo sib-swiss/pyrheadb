@@ -461,6 +461,8 @@ class RheaDB:
 
     def __get_inchi_inchikey(self, smiles):
         mol = Chem.MolFromSmiles(smiles)
+        if mol is None: # Example: RHEA:22076 with [8Fe-9S-C] cluster
+            return 'NA', 'NA-NA-NA'
         inchi = Chem.MolToInchi(mol)
         inchikey = Chem.MolToInchiKey(mol)
         if not inchi:
